@@ -25,11 +25,12 @@ export default Manifest({
   ],
   workflows: [
     reacjilator,
-    configurator,
-    maintenanceJob,
+    // configurator,
+    // maintenanceJob,
   ],
   outgoingDomains: [    
-    "api.openai.com"
+    "api.openai.com",    
+    "api.ohack.dev"    
   ],
   botScopes: [
     // reacjilator

@@ -5,7 +5,6 @@ import {
   joinAllChannels,
 } from "./internals/trigger_operations.ts";
 import { isDebugMode } from "./internals/debug_mode.ts";
-import { upTo100ReactionToLang } from "./detect_lang.ts";
 
 export const def = DefineFunction({
   callback_id: "configure",
@@ -147,12 +146,8 @@ export default SlackFunction(def, async ({ inputs, client, env }) => {
 // ---------------------------
 
 function buildModalView(conversationIds: string[], reactions: string[]) {
-  const options = Object.keys(upTo100ReactionToLang).map((r) => {
-    return {
-      "text": { "type": "plain_text", "text": `:flag-${r}:` },
-      "value": r,
-    };
-  });
+  const options = [{ "type": "plain_text", "text": `:newspaper:` }];
+  
   // deno-lint-ignore no-explicit-any
   const emojisBlock: any = {
     "type": "input",
@@ -167,7 +162,10 @@ function buildModalView(conversationIds: string[], reactions: string[]) {
         // Thus, users can use up to 9 emojis
         "text": "Choose up to 9 emojis",
       },
-      "options": options,
+      "options": {
+      "text": options,
+      "value": "newspaper",
+    },
       "action_id": "reactions",
     },
     "optional": true,

@@ -19,7 +19,7 @@ const trigger: Trigger<typeof workflowDef.definition> = {
   event: {
     event_type: TriggerEventTypes.ReactionAdded,
     // TODO: Listing all the channels to enable here is required
-    channel_ids: ["C04MDMGAU8Z"],
+    channel_ids: ["C04MDMGAU8Z", "C1Q6YHXQU"],
   },
   inputs: {
     channelId: { value: TriggerContextData.Event.ReactionAdded.channel_id },

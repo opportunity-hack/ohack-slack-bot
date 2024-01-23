@@ -1,6 +1,6 @@
 import { DefineWorkflow, Schema } from "deno-slack-sdk/mod.ts";
-import { def as detectLang } from "../functions/detect_lang.ts";
-import { def as translate } from "../functions/gen_news.ts";
+import { def as detectEmoji } from "../functions/detect_lang.ts";
+import { def as summarize } from "../functions/gen_news.ts";
 
 /**
  * A workflow that translates channel text messages into a different language.
@@ -20,13 +20,13 @@ const workflow = DefineWorkflow({
   },
 });
 
-// Detect the language to translate into
-const langDetection = workflow.addStep(detectLang, workflow.inputs);
+// Make sure the right reaction emoji was set
+const emojiDetection = workflow.addStep(detectEmoji, workflow.inputs);
 
 // Call DeepL's text translation API and then post the result in the same thread
-workflow.addStep(translate, {
+workflow.addStep(summarize, {
   ...workflow.inputs,
-  lang: langDetection.outputs.lang,
+  result: emojiDetection.outputs.result,
 });
 
 export default workflow;
