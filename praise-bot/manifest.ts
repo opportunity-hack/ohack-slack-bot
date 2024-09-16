@@ -1,24 +1,19 @@
 import { Manifest } from "deno-slack-sdk/mod.ts";
-import SampleWorkflow from "./workflows/sample_workflow.ts";
-import SampleObjectDatastore from "./datastores/sample_datastore.ts";
+import { FindGIFFunction } from "./functions/find_gif.ts";
+import { SavePraiseFunction } from "./functions/save_praise.ts";
+import { GiveKudosWorkflow } from "./workflows/give_kudos.ts";
 
 /**
- * The app manifest contains the app's configuration. This
- * file defines attributes like app name and description.
- * https://api.slack.com/automation/manifest
+ * The app manifest contains the app's configuration. This file defines
+ * attributes like app name, description, available workflows, and more.
+ * Learn more: https://api.slack.com/automation/manifest
  */
 export default Manifest({
-  name: "praise-bot",
-  description: "A template for building Slack apps with Deno",
-  icon: "assets/default_new_app_icon.png",
-  workflows: [SampleWorkflow],
-  outgoingDomains: [],
-  datastores: [SampleObjectDatastore],
-  botScopes: [
-    "commands",
-    "chat:write",
-    "chat:write.public",
-    "datastore:read",
-    "datastore:write",
-  ],
+  name: "give-kudos-app",
+  description: "Brighten someone's day with a heartfelt thank you",
+  icon: "assets/icon.png",
+  functions: [FindGIFFunction,SavePraiseFunction],
+  workflows: [GiveKudosWorkflow],
+  outgoingDomains: ["localhost"],
+  botScopes: ["commands", "chat:write", "chat:write.public"],
 });
