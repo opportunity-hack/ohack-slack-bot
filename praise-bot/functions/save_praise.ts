@@ -43,7 +43,8 @@ export const SavePraiseFunction = DefineFunction({
       console.log(`translate inputs: ${JSON.stringify(inputs)}`);
     }
 
-    client.users.identity("xoxe-1-My0xLTU4MjQ3MTA4MzkxLTc0MTM5OTA4MDQzMjctNzczMDcxNDI3MzQyNy1iZjczZWEwNTRjNzFlZGU1ZTUwMzc4NjdhM2I5OTZiYmMzMDdhZjgyNDg0NzhjZGY4MzNjMGY2ZWQxNzk5ODU5").then((userID) => {
+    //This is the line of code where I am trying to get the sender ID to pass in as an API request.
+    client.users.identity("super-secret-token-bept").then((userID) => {
       console.log("JSON object returned:", JSON.stringify(userID, null, 2));
     });
 
