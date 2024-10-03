@@ -16,9 +16,9 @@ const trigger: Trigger<typeof GiveKudosWorkflow.definition> = {
     interactivity: {
       value: TriggerContextData.Shortcut.interactivity,
     },
-    // user_id: {
-    //   value: TriggerContextData.Shortcut.user_id,
-    // },
+    sender_user_id: {
+      value: TriggerContextData.Shortcut.user_id,
+    },
     
   },
 };

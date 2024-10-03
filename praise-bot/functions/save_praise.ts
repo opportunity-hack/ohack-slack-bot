@@ -12,28 +12,28 @@ export const SavePraiseFunction = DefineFunction({
     source_file: "functions/save_praise.ts", // The file with the exported function handler
     input_parameters: {
       properties: {
-        sender: {
+        praise_sender: {
           type: Schema.slack.types.user_id,
           description: "The user id of the person sending the praise",
         },
-        doer: {
+        praise_receiver: {
           type: Schema.slack.types.user_id,
           description: "The user id of the person receiving the praise",
         },
-        channel: {
+        praise_channel: {
             type: Schema.slack.types.channel_id,
             description: "The channel where the praise is to be sent",
         },
-        message: {
+        praise_message: {
             type: Schema.types.string,
             description: "The message content of the praise",
         },
-        vibe: {
+        praise_gif: {
             type: Schema.types.string,
             description: "The energy of the praise",
         },                
       },
-      required: ["doer", "channel", "message"],
+      required: ["praise_sender", "praise_receiver", "praise_channel", "praise_message"],
     },
   });
 
@@ -42,19 +42,6 @@ export const SavePraiseFunction = DefineFunction({
     if (debugMode) {
       console.log(`translate inputs: ${JSON.stringify(inputs)}`);
     }
-
-    //This is the line of code where I am trying to get the sender ID to pass in as an API request.
-    client.users.identity("super-secret-token-bept").then((userID) => {
-      console.log("JSON object returned:", JSON.stringify(userID, null, 2));
-    });
-
-    const result = await sayInThread(
-      client,
-      inputs.doer,
-      inputs.channel,
-      inputs.message,
-      inputs.vibe,
-    );
 
       // Call backend api to post the news article
       const backendUrl = env.BACKEND_PRAISE_URL;
@@ -76,6 +63,7 @@ export const SavePraiseFunction = DefineFunction({
         },
         body: JSON.stringify(inputs)
       });
+      console.log("What is the status of the backendResponse" + backendResponse.status);
       if (backendResponse.status != 200) {
         const error =
           `Saving the praise failed! Contact the app maintainers with the following information - (status: ${backendResponse.status})`;
@@ -91,15 +79,4 @@ export const SavePraiseFunction = DefineFunction({
     return { outputs: { ts: backendResult.ts } };
   });
 
-  async function sayInThread(
-    client: SlackAPIClient,
-    doerId: string,
-    channelId: string,
-    message: string,
-    vibe: string,
-  ) {
-    return await client.chat.postMessage({
-      channel: channelId,
-      text: message,
-    });
-  }
+ 

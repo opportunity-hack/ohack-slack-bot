@@ -20,9 +20,9 @@ const GiveKudosWorkflow = DefineWorkflow({
       interactivity: {
         type: Schema.slack.types.interactivity,
       },
-      // sender_user_id:{
-      //   type: Schema.slack.types.user_id
-      // }
+      sender_user_id:{
+        type: Schema.slack.types.user_id
+      }
     },
     required: ["interactivity"],
   },
@@ -86,18 +86,20 @@ const gif = GiveKudosWorkflow.addStep(FindGIFFunction, {
 
 /*
  * Extracts data from kudo step and calls SavePraiseFunction to call API saving to Firestore database
- * @param {string} doer - The ID of the user who made the praise
- * @param {string} channel - The ID of the channel the praise is written in
- * @param {string} message - The message content of the praise
- * @param {string} vibe - The ID of the user who made the praise
- * @returns response to the API call
+ * @param {string} praise_sender - The slack user ID of the person writing a praise 
+ * @param {string} praise_receiver - The slack user ID of the person receiving a praise 
+ * @param {string} praise_channel - The channel where the praise is written in
+ * @param {string} praise_message - The message content of the praise
+ * @param {string} praise_gif - The URL of the GIF used in praise 
+ * @returns None
  */
+
 GiveKudosWorkflow.addStep(SavePraiseFunction, {
-  sender: GiveKudosWorkflow.inputs.sender_user_id,
-  doer: kudo.outputs.fields.doer_of_good_deeds,
-  channel: kudo.outputs.fields.kudo_channel,
-  message: kudo.outputs.fields.kudo_message,
-  gif: gif.outputs.URL,
+  praise_sender: GiveKudosWorkflow.inputs.sender_user_id,
+  praise_receiver: kudo.outputs.fields.doer_of_good_deeds,
+  praise_channel: kudo.outputs.fields.kudo_channel,
+  praise_message: kudo.outputs.fields.kudo_message,
+  praise_gif: gif.outputs.URL,
 });
 
 /**
@@ -112,21 +114,5 @@ GiveKudosWorkflow.addStep(Schema.slack.functions.SendMessage, {
     `<${gif.outputs.URL}>`,
 });
 
-//Helper methods
-function getSenderUserID(translationResult: any): string {
-  if (
-    !translationResult ||
-    !translationResult.id ||
-    translationResult.choices.length === 0
-  ) {
-    const printableResponse = JSON.stringify(translationResult);
-    const error =
-      `Translating a message failed! Contact the app maintainers with the following information - (OpenAI API response: ${printableResponse})`;
-    console.log(error);    
-    return error;
-  }
-  
-  return ""
-}
 
 export { GiveKudosWorkflow };
