@@ -1,0 +1,11 @@
+{
+  "apps": {
+    "T1Q7936BH": {
+      "app_id": "A07QEQKL7FX",
+      "IsDev": false,
+      "team_domain": "opportunity-hack",
+      "team_id": "T1Q7936BH"
+    }
+  },
+  "default": "opportunity-hack"
+}
