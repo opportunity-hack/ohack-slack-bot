@@ -1,58 +1,15 @@
-# Opportunity Hack Problem Statement
-All Slack apps that do this are $3 to $4 per user, per month.  If we have 800 active users, that could be $3200 a month for us.  We need to create a free version of what these other apps do.
+# Give Kudos
 
-## Paid App Examples
-### 1. I'm Frank https://imfrank.app
-1. I'm Frank helps teams develop with timely, continuous feedback and recognition within Slack.
-2. Users can share, request, and receive feedback from colleagues and managers using various formats, settings, and templates.
-3. Users can also praise co-workers for their achievements and values, and display the recognition on a public wall of praise.
-4. Users can customize the feedback and praise messages and emojis to fit their company's values and culture.
-5. Managers can access the feedback and praise history of their reports, and prepare performance reviews based on continuous 360° feedback.
-6. Users can view and manage their feedback and praise data, as well as their reporting lines and org chart, on a web dashboard.
-7. The app has a simple and user-friendly interface that works seamlessly with Slack's native features and commands.
-8. The app costs $4 per user per month, and offers a free trial for 30 days with no credit card required.
-9. The app complies with Slack's security and compliance standards, and respects the user's privacy and data protection.
-10. The app improves the team's engagement, development, and performance by making feedback and recognition part of their workflow and culture.
-
-### 2. Dankon https://dankon.io
-1. Dankon is a Slack app that promotes gratitude and encourages teammates to praise each other.
-2. Users can send and receive praise messages within Slack, using commands, buttons, or reactions.
-3. Users can customize the praise messages and emojis to match their team's culture and values.
-4. Users can view the praise history and stats of themselves and their teammates on a web dashboard.
-5. Users can also see the praise messages displayed on a public wall of praise on the app's website¹.
-6. The app integrates with the company's performance management system and helps managers track and reward their team's achievements.
-7. The app has a simple and intuitive interface that requires no training or installation to use.
-8. The app costs $2.99 per user per month, and offers a free trial for 14 days with no credit card required.
-9. The app complies with Slack's security and compliance standards, and respects the user's privacy and data protection.
-10. The app improves the team's engagement, morale, and productivity by making praise and recognition an integral part of their workflow and culture.
-
-
-
-### 3. karmabot https://karmabot.chat
-1. Karma bot is a Slack app that tracks and rewards team performance and culture.
-2. Users can send and receive karma points within Slack, using commands, buttons, or reactions, to appreciate their colleagues' work and achievements.
-3. Users can customize the karma messages and emojis to match their team's values and goals.
-4. Users can view the karma history and stats of themselves and their teammates on a web dashboard or in Slack.
-5. Users can also see the karma messages displayed on a public wall of praise on the app's website¹.
-6. The app integrates with the company's performance management system and helps managers track and reward their team's achievements.
-7. The app has a simple and intuitive interface that works seamlessly with Slack's native features and commands.
-8. The app costs $2.99 per user per month, and offers a free trial for 30 days with no credit card required.
-9. The app complies with Slack's security and compliance standards, and respects the user's privacy and data protection.
-10. The app improves the team's engagement, morale, and productivity by making karma and recognition an integral part of their workflow and culture.
-
-
-
-# Deno Starter Template
-
-This is a scaffolded Deno template used to build out Slack apps using the Slack
-CLI.
+Share warm kudos and kind words with anyone in your workspace using functions
+and a workflow!
 
 **Guide Outline**:
 
 - [Setup](#setup)
   - [Install the Slack CLI](#install-the-slack-cli)
-  - [Clone the Template](#clone-the-template)
+  - [Clone the Sample App](#clone-the-sample-app)
 - [Running Your Project Locally](#running-your-project-locally)
+  - [Updating the GIF Catalog](#updating-the-gif-catalog)
 - [Creating Triggers](#creating-triggers)
 - [Datastores](#datastores)
 - [Testing](#testing)
@@ -72,20 +29,20 @@ project require that the workspace be part of
 
 ### Install the Slack CLI
 
-To use this template, you need to install and configure the Slack CLI.
+To use this sample, you need to install and configure the Slack CLI.
 Step-by-step instructions can be found in our
 [Quickstart Guide](https://api.slack.com/automation/quickstart).
 
-### Clone the Template
+### Clone the Sample App
 
 Start by cloning this repository:
 
 ```zsh
 # Clone this project onto your machine
-$ slack create my-app -t slack-samples/deno-starter-template
+$ slack create give-kudos-app -t slack-samples/deno-give-kudos
 
 # Change into the project directory
-$ cd my-app
+$ cd give-kudos-app
 ```
 
 ## Running Your Project Locally
@@ -102,6 +59,34 @@ Connected, awaiting events
 ```
 
 To stop running locally, press `<CTRL> + C` to end the process.
+
+### Updating the GIF Catalog
+
+The GIFs that accompony a kudo are selected randomly after filtering against
+user input. The GIF catalog can be found in the `./assets/gifs.json` file and
+fixed to your fancies!
+
+```javascript
+// ./assets/gifs.json
+
+[{
+  "URL": "https://media1.giphy.com/media/ZfK4cXKJTTay1Ava29/giphy.gif",
+  "alt_text": "A person wearing a banana hat says thanks a bunch",
+  "tags": ["thankful"]
+}, {
+  "URL": "https://media2.giphy.com/media/ZfK4cXKJTTay1Ava29/giphy.gif",
+  "alt_text": "Dwight from The Office says thank you",
+  "tags": ["thankful", "appreciation"]
+}, {
+  ...
+}]
+```
+
+Each GIF is represented by an object with a `URL` of the GIF, `alt_text` that
+describes the GIF, and a `tags` array.
+
+Strings in the `tags` array are checked against the `kudo_vibe`, and GIFs that
+pass the vibe check are added to the pool of possibily chosen animations.
 
 ## Creating Triggers
 
@@ -145,21 +130,19 @@ or deployed!**
 To manually create a trigger, use the following command:
 
 ```zsh
-$ slack trigger create --trigger-def triggers/sample_trigger.ts
+$ slack trigger create --trigger-def triggers/give_kudos.ts
 ```
 
 ## Datastores
 
 For storing data related to your app, datastores offer secure storage on Slack
-infrastructure. For an example of a datastore, see
-`datastores/sample_datastore.ts`. The use of a datastore requires the
+infrastructure. The use of a datastore requires the
 `datastore:write`/`datastore:read` scopes to be present in your manifest.
 
 ## Testing
 
-For an example of how to test a function, see
-`functions/sample_function_test.ts`. Test filenames should be suffixed with
-`_test`.
+For an example of how to test a function, see `functions/find_gif_test.ts`. Test
+filenames should be suffixed with `_test`.
 
 Run all tests with `deno test`:
 
