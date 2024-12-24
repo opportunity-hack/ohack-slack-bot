@@ -25,6 +25,7 @@ const trigger: Trigger<typeof workflowDef.definition> = {
     channelId: { value: TriggerContextData.Event.ReactionAdded.channel_id },
     messageTs: { value: TriggerContextData.Event.ReactionAdded.message_ts },
     reaction: { value: TriggerContextData.Event.ReactionAdded.reaction },
+    userId: { value: TriggerContextData.Event.ReactionAdded.user_id },
   },
 };
 

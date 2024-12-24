@@ -30,6 +30,7 @@ const triggerInputs = {
   channelId: { value: "{{data.channel_id}}" },
   messageTs: { value: "{{data.message_ts}}" },
   reaction: { value: "{{data.reaction}}" },
+  userId: { value: "{{data.user}}" },
 };
 
 export async function createOrUpdateTrigger(
@@ -37,6 +38,7 @@ export async function createOrUpdateTrigger(
   workflowCallbackId: string,
   channelIds: string[],
   reactions: string[],
+  userIds: string[],
   triggerToUpdate?: Record<string, string>,
 ) {
   // deno-lint-ignore no-explicit-any
@@ -49,6 +51,19 @@ export async function createOrUpdateTrigger(
         const statement of [
           `{{data.reaction}} == '${reaction}'`,
           `{{data.reaction}} == 'flag-${reaction}'`,
+        ]
+      ) {
+        filterStatements.push({ statement });
+      }
+    }
+  }
+
+  if( userIds ) {
+    for (const userId of userIds) {
+      if (filterStatements.length > 18) break;
+      for (
+        const statement of [
+          `{{data.user}} == '${userId}'`,
         ]
       ) {
         filterStatements.push({ statement });

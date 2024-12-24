@@ -45,7 +45,7 @@ function getTranslatedText(translationResult: any): string {
 }
 
 
-  async function makeOpenAIRequest(url: string, body: string, authKey: string, targetText: string, debugMode: boolean) {
+async function makeOpenAIRequest(url: string, body: string, authKey: string, targetText: string, debugMode: boolean) {
     const deeplResponse = await fetch(url, {
       method: "POST",
       headers: {
@@ -79,10 +79,6 @@ function getTranslatedText(translationResult: any): string {
 
     return checkTranslationResult(translationResult);
   }
-
-
-
-
 
 export default SlackFunction(def, async ({ inputs, client, env }) => {
   const debugMode = isDebugMode(env);
@@ -164,7 +160,7 @@ export default SlackFunction(def, async ({ inputs, client, env }) => {
       
   // Create const body that is a json object
   const bodyForTitle = JSON.stringify({
-    model: "gpt-3.5-turbo-1106",
+    model: "gpt-4o-mini",
     messages: [
       {
         role: "system",
@@ -182,11 +178,11 @@ export default SlackFunction(def, async ({ inputs, client, env }) => {
   });
 
   const bodyForSummary = JSON.stringify({
-    model: "gpt-3.5-turbo-1106",
+    model: "gpt-4o",
     messages: [
       {
         role: "system",
-        content: "You are a blog writer for Opportunity Hack. Summarize this news article as three sentences or less. Your unique writing is sometimes inspired by nerdy engineering and science, Taylor Swift, Green Day, and 1990's R&B music.",
+        content: "You are a blog writer for Opportunity Hack. Summarize this news article as four sentences or less. Your unique writing is sometimes inspired by nerdy engineering terms, computer science puns, and science, Taylor Swift, Green Day, and 1990's R&B music.",
       },
       {
         role: "user",
@@ -200,11 +196,11 @@ export default SlackFunction(def, async ({ inputs, client, env }) => {
   });
 
   const bodyForLinks = JSON.stringify({
-    model: "gpt-3.5-turbo-1106",
+    model: "gpt-4o-mini",
     messages: [
       {
         role: "system",
-        content: "You are a Slack url link detector. Output should always be in Slack markdown <link|name>. You are given a text and you need to find all the urls and names of the urls in the text.",
+        content: "You are a Slack url link detector. Output should always be in Slack markdown <link|name>. You are given a text and you need to find all the urls and names of the urls in the text. If you are only given a link without a name, just provide the name as: link. For example if you see only https://opportunity-hack.slack.com/archives/C07RZGUS0DP/p1728971255221889 respond with <https://opportunity-hack.slack.com/archives/C07RZGUS0DP/p1728971255221889|link>",
       },
       {
         role: "user",

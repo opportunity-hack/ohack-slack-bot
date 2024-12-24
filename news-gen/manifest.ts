@@ -30,7 +30,7 @@ export default Manifest({
   ],
   outgoingDomains: [    
     "api.openai.com",    
-    "api.ohack.dev"    
+    "api.ohack.dev"
   ],
   botScopes: [
     // reacjilator
