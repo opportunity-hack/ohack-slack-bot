@@ -1,0 +1,54 @@
+{
+    "display_information": {
+        "name": "Praise Bolt JS"
+    },
+    "features": {
+        "app_home": {
+            "home_tab_enabled": true,
+            "messages_tab_enabled": true,
+            "messages_tab_read_only_enabled": true
+        },
+        "bot_user": {
+            "display_name": "Praise-Bot",
+            "always_online": false
+        },
+        "slash_commands": [
+            {
+                "command": "/praise",
+                "url": "https://opportunity-hack.slack.com/slack/events/praise",
+                "description": "Opens a praise form ",
+                "should_escape": false
+            }
+        ]
+    },
+    "oauth_config": {
+        "scopes": {
+            "bot": [
+                "channels:history",
+                "chat:write",
+                "commands",
+                "groups:history",
+                "users.profile:read",
+                "chat:write.public",
+                "users:read"
+            ]
+        }
+    },
+    "settings": {
+        "event_subscriptions": {
+            "bot_events": [
+                "function_executed",
+                "message.channels",
+                "message.groups"
+            ]
+        },
+        "interactivity": {
+            "is_enabled": true
+        },
+        "org_deploy_enabled": true,
+        "socket_mode_enabled": true,
+        "token_rotation_enabled": false,
+        "hermes_app_type": "remote",
+        "function_runtime": "remote"
+    }
+}
