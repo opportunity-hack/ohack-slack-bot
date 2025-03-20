@@ -24,7 +24,7 @@ app.command('/praise', async ({ ack, body, client, logger}) => {
     const result = await client.views.open({
       // Pass a valid trigger_id within 3 seconds of receiving it
       trigger_id: body.trigger_id,
-      // View payload for praise form
+      // View payload for praise form (stored in praise_form.json)
       view: praiseFormView
     });
     logger.info("result object:", result);
