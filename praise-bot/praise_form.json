@@ -1,0 +1,121 @@
+{
+    "type": "modal",
+    "callback_id": "praise_form",
+    "title": {
+      "type": "plain_text",
+      "text": "Submit a Praise Form"
+    },
+    "blocks": [
+      {
+        "type": "section",
+        "text": {
+          "type": "mrkdwn",
+          "text": "Give someone a Praise!"
+        }
+      },
+      {
+        "type": "input",
+        "block_id": "users_menu",
+        "element": {
+          "action_id": "select_user",
+          "type": "users_select"
+        },
+        "label": {
+          "type": "plain_text",
+          "text": "Whose deeds are deemed worthy of a praise?",
+          "emoji": true
+        },
+        "optional": false
+      },
+      {
+        "type": "input",
+        "block_id": "channels_menu",
+        "element": {
+          "action_id": "select_channel",
+          "type": "channels_select"
+        },
+        "label": {
+          "type": "plain_text",
+          "text": "Which channel do you want to share this in?",
+          "emoji": true
+        },
+        "optional": false
+      },
+      {
+        "type": "input",
+        "block_id": "message_input",
+        "element": {
+          "type": "plain_text_input",
+          "multiline": true,
+          "action_id": "plain_text_input"
+        },
+        "label": {
+          "type": "plain_text",
+          "text": "What would you like to say?",
+          "emoji": true
+        }
+      },
+      {
+        "type": "input",
+        "block_id": "vibe_dropdown",
+        "element": {
+          "type": "static_select",
+          "action_id": "select_vibe",
+          "options": [
+            {
+              "text": {
+                "type": "plain_text",
+                "text": "Appreciation for someone 🫂"
+              },
+              "value": "value-0"
+            },
+            {
+              "text": {
+                "type": "plain_text",
+                "text": "Celebrating a victory 🏆"
+              },
+              "value": "value-1"
+            },
+            {
+              "text": {
+                "type": "plain_text",
+                "text": "Thankful for great teamwork ⚽️"
+              },
+              "value": "value-2"
+            },
+            {
+              "text": {
+                "type": "plain_text",
+                "text": "Amazed at awesome work ☄️"
+              },
+              "value": "value-3"
+            },
+            {
+              "text": {
+                "type": "plain_text",
+                "text": "Excited for the future 🎉"
+              },
+              "value": "value-4"
+            },
+            {
+              "text": {
+                "type": "plain_text",
+                "text": "No vibes, just plants 🪴"
+              },
+              "value": "value-5"
+            }
+          ]
+        },
+        "label": {
+          "type": "plain_text",
+          "text": "What is this kudo's \"vibe\"?",
+          "emoji": true
+        },
+        "optional": true
+      }
+    ],
+    "submit": {
+      "type": "plain_text",
+      "text": "Submit"
+    }
+  }
