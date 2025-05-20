@@ -1,22 +1,21 @@
 {
     "display_information": {
-        "name": "Praise Bolt JS"
+        "name": "Praise Bot Dev"
     },
     "features": {
         "app_home": {
             "home_tab_enabled": true,
-            "messages_tab_enabled": true,
+            "messages_tab_enabled": false,
             "messages_tab_read_only_enabled": true
         },
         "bot_user": {
-            "display_name": "Praise-Bot",
+            "display_name": "Praise Bot Dev",
             "always_online": false
         },
         "slash_commands": [
             {
-                "command": "/praise",
-                "url": "https://opportunity-hack.slack.com/slack/events/praise",
-                "description": "Opens a praise form ",
+                "command": "/praise-dev",
+                "description": "Opens a praise form in local dev",
                 "should_escape": false
             }
         ]
@@ -24,12 +23,12 @@
     "oauth_config": {
         "scopes": {
             "bot": [
+                "commands",
                 "channels:history",
                 "chat:write",
-                "commands",
+                "chat:write.public",
                 "groups:history",
                 "users.profile:read",
-                "chat:write.public",
                 "users:read"
             ]
         }
@@ -37,9 +36,9 @@
     "settings": {
         "event_subscriptions": {
             "bot_events": [
-                "function_executed",
                 "message.channels",
-                "message.groups"
+                "message.groups",
+                "function_executed"
             ]
         },
         "interactivity": {
