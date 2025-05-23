@@ -39,7 +39,7 @@
           "text": "Which channel do you want to share this in?",
           "emoji": true
         },
-        "optional": false
+        "optional": true
       },
       {
         "type": "input",

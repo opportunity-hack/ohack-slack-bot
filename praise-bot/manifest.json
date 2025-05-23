@@ -15,7 +15,7 @@
         "slash_commands": [
             {
                 "command": "/praise",
-                "url": "https://opportunity-hack.slack.com/slack/events/praise",
+                "url": "https://praise-bolt-app.fly.dev",
                 "description": "Opens a praise form ",
                 "should_escape": false
             }
@@ -26,10 +26,10 @@
             "bot": [
                 "channels:history",
                 "chat:write",
+                "chat:write.public",
                 "commands",
                 "groups:history",
                 "users.profile:read",
-                "chat:write.public",
                 "users:read"
             ]
         }
