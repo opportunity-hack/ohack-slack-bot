@@ -6,7 +6,45 @@ const { config } = require('dotenv');
 
 config();
 
-/** Initialization */
+/*
+ * Validates the setting of the required environment variables:
+ *  SLACK_BOT_TOKEN - the OAuth token env variable for the Slack bot
+ *  SLACK_APP_TOKEN - the App-level token allowing tasks requiring app access
+ *  SLASH_CMD - the slash command used to activate Slack bot in dev or prod mode
+ */
+function validateConfig() {
+  const requiredEnvVars = {
+    SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
+    SLACK_APP_TOKEN: process.env.SLACK_APP_TOKEN,
+    SLASH_CMD: process.env.SLASH_CMD
+  };
+
+  const missingVars = Object.entries(requiredEnvVars)
+    .filter(([_, value]) => value === undefined || value === null || value === '')
+    .map(([key]) => key);
+
+  if (missingVars.length > 0) {
+    throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
+  }
+
+  /* 
+   * Validate SLASH_CMD format or spelling in development mode 
+   * If the app is in Development Mode AND SLASH_CMD not spelled correctly, 
+   * stop the app when running 'node app.js' command by throwing an error. 
+   */
+  if (process.env.DEBUG_MODE === 'true' && process.env.SLASH_CMD !== '/praise-dev') {
+    throw new Error('SLASH_CMD is not set to /praise-dev in debug/dev mode');
+  }
+}
+
+try {
+  validateConfig();
+} catch (error) {
+  console.error('Configuration Error:', error.message);
+  process.exit(1);
+}
+
+/** App Initialization */
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
   socketMode: true,
@@ -77,13 +115,18 @@ app.view('praise_form', async ({ ack, body, view, client, logger}) => {
   }
   const gif_selection = slackGIFSelectionFunction(vibe_selection);
 
-  //Store data attributes into a variable
+  /*
+   * Store data attributes into a variable
+   */
   var sender = body.user.id;
   var receiver = body.view.state.values.users_menu.select_user.selected_user;
   
+  /*
+   * Decides which channel to send the praise message to 
+   */
   var channel;
   if (body.view.state.values.channels_menu.select_channel.selected_channel === null) {
-    channel = receiver;  // Send to receiver instead of sender when no channel selected
+    channel = receiver;  // Send to receiver if a channel not selected
   } else {
     channel = body.view.state.values.channels_menu.select_channel.selected_channel;
   }
@@ -104,8 +147,9 @@ app.view('praise_form', async ({ ack, body, view, client, logger}) => {
     jsonPraiseData);
   var backendRslt = await savePraiseFunction(jsonPraiseData, process.env);
 
-  //If the backend returns error msg, send the error msg to the sender.
+  //Sets the message format depending on success in backend.
   if (backendRslt.error != null) { 
+    //Prepares for direct message to 'praise sender' about an issue with backend.
     message_txt = `*Hey <@${sender}>!* ` + backendRslt.error;
     channel = sender;
   }
@@ -137,13 +181,7 @@ app.view('praise_form', async ({ ack, body, view, client, logger}) => {
     const shutdown = async () => {
       console.log('Shutting down gracefully...');
       try {
-        // First, close the WebSocket connection
-        if (app.client) {
-          console.log('Closing WebSocket connection...');
-          await app.client.disconnect();
-        }
-        
-        // Then stop the app
+        // Stop the app to handle WebSocket closure
         console.log('Stopping the app...');
         await app.stop();
         
@@ -155,9 +193,9 @@ app.view('praise_form', async ({ ack, body, view, client, logger}) => {
       }
     };
 
-    // Handle termination signals
-    process.on('SIGTERM', shutdown);
-    process.on('SIGINT', shutdown);
+    // Handle termination 
+    process.on('SIGTERM', shutdown);  //Shutdown when redeploying on fly.io 
+    process.on('SIGINT', shutdown);   //Shutdown when clicking CTRL+C
   } catch (error) {
     console.error('Failed to start the app', error);
     process.exit(1);

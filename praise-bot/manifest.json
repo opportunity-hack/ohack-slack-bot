@@ -1,21 +1,22 @@
 {
     "display_information": {
-        "name": "Praise Bot Dev"
+        "name": "Praise Bolt JS"
     },
     "features": {
         "app_home": {
             "home_tab_enabled": true,
-            "messages_tab_enabled": false,
+            "messages_tab_enabled": true,
             "messages_tab_read_only_enabled": true
         },
         "bot_user": {
-            "display_name": "Praise Bot Dev",
+            "display_name": "Praise-Bot",
             "always_online": false
         },
         "slash_commands": [
             {
-                "command": "/praise-dev",
-                "description": "Opens a praise form in local dev",
+                "command": "/praise",
+                "url": "https://praise-bolt-app.fly.dev",
+                "description": "Opens a praise form ",
                 "should_escape": false
             }
         ]
@@ -23,10 +24,10 @@
     "oauth_config": {
         "scopes": {
             "bot": [
-                "commands",
                 "channels:history",
                 "chat:write",
                 "chat:write.public",
+                "commands",
                 "groups:history",
                 "users.profile:read",
                 "users:read"
@@ -36,9 +37,9 @@
     "settings": {
         "event_subscriptions": {
             "bot_events": [
+                "function_executed",
                 "message.channels",
-                "message.groups",
-                "function_executed"
+                "message.groups"
             ]
         },
         "interactivity": {
