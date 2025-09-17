@@ -156,7 +156,10 @@ app.view('praise_form', async ({ ack, body, view, client, logger}) => {
   else {
     message_txt = `*Hey <@${receiver}>!*` + 
       `<@${sender}> wanted to share some kind words with you :otter:\n` +
-      `> ${message}\n` + `<${gif}>`
+      `> ${message}\n` + `<${gif}>` +
+      `\n\nYou can check out this praise at <https://ohack.dev/praise|ohack.dev/praise>. If you don't see it, `
+      + `please report the issue in #slack-bot-dev.` +
+      `\n\nWant to send a praise too? Type \`/praise\` to open and submit a form.`
   }
 
   // Post message in the channel or to the user
