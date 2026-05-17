@@ -4,8 +4,8 @@ import { def as translate } from "./functions/gen_news.ts";
 import { def as configure } from "./functions/configure.ts";
 import { def as maintainMembership } from "./functions/maintain_membership.ts";
 import reacjilator from "./workflows/reacjilator.ts";
-import configurator from "./workflows/configurator.ts";
-import maintenanceJob from "./workflows/maintenance_job.ts";
+import _configurator from "./workflows/configurator.ts";
+import _maintenanceJob from "./workflows/maintenance_job.ts";
 
 /**
  * DeepL Translator app translates Slack messages in channels.
@@ -28,9 +28,9 @@ export default Manifest({
     // configurator,
     // maintenanceJob,
   ],
-  outgoingDomains: [    
-    "api.openai.com",    
-    "api.ohack.dev"
+  outgoingDomains: [
+    "api.openai.com",
+    "api.ohack.dev",
   ],
   botScopes: [
     // reacjilator

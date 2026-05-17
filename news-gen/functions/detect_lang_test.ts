@@ -4,23 +4,23 @@ import handler from "./detect_lang.ts";
 
 const { createContext } = SlackFunctionTester("my-function");
 
-Deno.test("Detect the language when a country name is given", async () => {
-  const inputs = { reaction: "jp" };
+Deno.test("Return the reaction name for an allowed user", async () => {
+  const inputs = { reaction: "jp", userId: "UC31XTRT5" };
   const env = { DEBUG_MODE: "false" };
   const { outputs } = await handler(createContext({ inputs, env }));
-  assertEquals(outputs?.lang, "ja");
+  assertEquals(outputs?.result, "jp");
 });
 
-Deno.test("Detect the language when a flag is given", async () => {
-  const inputs = { reaction: "flag-au" };
+Deno.test("Return the reaction name for a flag reaction", async () => {
+  const inputs = { reaction: "flag-au", userId: "UC31XTRT5" };
   const env = { DEBUG_MODE: "false" };
   const { outputs } = await handler(createContext({ inputs, env }));
-  assertEquals(outputs?.lang, "en");
+  assertEquals(outputs?.result, "flag-au");
 });
 
-Deno.test("Return nothing when the given reaction is irrelevant", async () => {
-  const inputs = { reaction: "eyes" };
+Deno.test("Return nothing when the user is not allowed", async () => {
+  const inputs = { reaction: "eyes", userId: "NOTALLOWED" };
   const env = { DEBUG_MODE: "false" };
   const { outputs } = await handler(createContext({ inputs, env }));
-  assertEquals(outputs?.lang, undefined);
+  assertEquals(outputs?.result, undefined);
 });

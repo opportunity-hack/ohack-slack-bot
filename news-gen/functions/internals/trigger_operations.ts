@@ -58,7 +58,7 @@ export async function createOrUpdateTrigger(
     }
   }
 
-  if( userIds ) {
+  if (userIds) {
     for (const userId of userIds) {
       if (filterStatements.length > 18) break;
       for (

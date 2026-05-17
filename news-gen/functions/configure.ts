@@ -114,6 +114,7 @@ export default SlackFunction(def, async ({ inputs, client, env }) => {
             reacjilatorWorkflowCallbackId,
             conversationIds,
             reactions,
+            [],
             triggerToUpdate,
           );
         }
@@ -146,8 +147,11 @@ export default SlackFunction(def, async ({ inputs, client, env }) => {
 // ---------------------------
 
 function buildModalView(conversationIds: string[], reactions: string[]) {
-  const options = [{ "type": "plain_text", "text": `:newspaper:` }];
-  
+  const options = [{
+    "text": { "type": "plain_text", "text": ":newspaper:" },
+    "value": "newspaper",
+  }];
+
   // deno-lint-ignore no-explicit-any
   const emojisBlock: any = {
     "type": "input",
@@ -162,10 +166,7 @@ function buildModalView(conversationIds: string[], reactions: string[]) {
         // Thus, users can use up to 9 emojis
         "text": "Choose up to 9 emojis",
       },
-      "options": {
-      "text": options,
-      "value": "newspaper",
-    },
+      "options": options,
       "action_id": "reactions",
     },
     "optional": true,

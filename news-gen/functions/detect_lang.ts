@@ -6,9 +6,9 @@ export const def = DefineFunction({
   title: "Detects that the correct reaction emoji was set",
   source_file: "functions/detect_lang.ts",
   input_parameters: {
-    properties: { 
+    properties: {
       reaction: { type: Schema.types.string },
-      userId: { type: Schema.types.string },      
+      userId: { type: Schema.types.string },
     },
     required: ["reaction", "userId"],
   },
@@ -29,20 +29,20 @@ export default SlackFunction(def, ({
   const reactionName = inputs.reaction;
   const userId = inputs.userId;
   const allowedUserIds = ["UC31XTRT5", "UCQKX6LPR"];
-  
+
   // Log all inputs
   console.log(`inputs: ${JSON.stringify(inputs)}`);
-  
+
   // log reaction
   console.log(`reactionName: ${reactionName}`);
 
   // Check if the user is allowed to use the reaction
   if (!allowedUserIds.includes(userId)) {
-    console.log(`User ${userId} is not allowed to use the reaction`);
-    return { outputs: { result: null } };
+    console.log(
+      `[detect-lang] User ${userId} is not allowed to use the reaction - skipping`,
+    );
+    return { outputs: {} }; // result is not required; returning empty outputs halts downstream steps gracefully
   }
 
   return { outputs: { result: reactionName } };
 });
-
-
