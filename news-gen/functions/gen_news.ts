@@ -181,10 +181,11 @@ export default SlackFunction(def, async ({ inputs, client, env }) => {
         content:
           `You are a blog writer and editor for Opportunity Hack, a nonprofit hackathon organization. Your writing style is occasionally inspired by nerdy engineering terms, computer science puns, Taylor Swift, Green Day, and 1990s R&B music.
 
-Given a Slack message, respond with a JSON object containing exactly these three fields:
+Given a Slack message, respond with a JSON object containing exactly these four fields:
 - "title": A single blog article title, fewer than 10 words, no surrounding quotes or backslashes.
 - "summary": A summary of the message in four sentences or less, no surrounding quotes or backslashes.
-- "links": All URLs found in the text formatted as Slack markdown <url|name>. Use "link" as the name when none is provided only if you can't figure out a good name. Return an empty string if no URLs are found.`,
+- "links": All URLs found in the text formatted as Slack markdown <url|name>. Use "link" as the name when none is provided only if you can't figure out a good name. Return an empty string if no URLs are found.
+- "content_markdown": A full blog article in markdown format. Use headings (##), bullet points, and bold text where appropriate. Should be at least three paragraphs and expand meaningfully on the summary.`,
       },
       {
         role: "user",
@@ -204,7 +205,7 @@ Given a Slack message, respond with a JSON object containing exactly these three
     return rawResponse;
   }
 
-  let parsed: { title: string; summary: string; links: string };
+  let parsed: { title: string; summary: string; links: string; content_markdown: string };
   try {
     parsed = JSON.parse(rawResponse as string);
   } catch (_e) {
@@ -216,6 +217,7 @@ Given a Slack message, respond with a JSON object containing exactly these three
   const titleResponse = parsed.title ?? "";
   const summaryReponse = parsed.summary ?? "";
   const linksResponse = parsed.links ?? "";
+  const contentMarkdown = parsed.content_markdown ?? "";
 
   const summarizedText =
     `Title: ${titleResponse}\nSummary: ${summaryReponse}\nLinks: ${linksResponse}`;
@@ -243,6 +245,20 @@ Given a Slack message, respond with a JSON object containing exactly these three
     summarizedText,
   );
 
+  // Fetch author info from Slack
+  let authorName = "Opportunity Hack";
+  let authorEmail = "";
+  if (translationTarget.user) {
+    const userInfoResponse = await client.users.info({ user: translationTarget.user });
+    if (userInfoResponse.user) {
+      authorName = userInfoResponse.user.real_name ||
+        userInfoResponse.user.profile?.display_name ||
+        userInfoResponse.user.name ||
+        authorName;
+      authorEmail = userInfoResponse.user.profile?.email ?? "";
+    }
+  }
+
   // Call backend api to post the news article
   const backendUrl = env.BACKEND_NEWS_URL;
   const token = env.BACKEND_NEWS_TOKEN;
@@ -254,24 +270,35 @@ Given a Slack message, respond with a JSON object containing exactly these three
       "BACKEND_URL needs to be set. You can place .env file for local dev. For production apps, please run `slack env add BACKEND_URL (your key here)` to set the value.";
     return { error };
   }
+  const backendPayload = {
+    title: titleResponse,
+    description: summaryReponse,
+    links: linksResponse,
+    slack_ts: inputs.messageTs,
+    slack_permalink: permalink,
+    slack_channel: inputs.channelId,
+    content_format: "markdown",
+    content_markdown: contentMarkdown,
+    slug: generateSlug(titleResponse),
+    status: "published",
+    author: {
+      name: authorName,
+      email: authorEmail,
+    },
+  };
+  console.log(`backend payload: ${JSON.stringify(backendPayload)}`);
   const backendResponse = await fetch(backendUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "X-Api-Key": token,
     },
-    body: JSON.stringify({
-      title: titleResponse,
-      description: summaryReponse,
-      links: linksResponse,
-      slack_ts: inputs.messageTs,
-      slack_permalink: permalink,
-      slack_channel: inputs.channelId,
-    }),
+    body: JSON.stringify(backendPayload),
   });
   if (backendResponse.status != 200) {
+    const responseBody = await backendResponse.text();
     const error =
-      `Posting the news article failed! Contact the app maintainers with the following information - (status: ${backendResponse.status}, target text: ${
+      `Posting the news article failed! Contact the app maintainers with the following information - (status: ${backendResponse.status}, body: ${responseBody}, target text: ${
         targetText.substring(0, 30)
       }...)`;
     console.log(error);
@@ -282,12 +309,32 @@ Given a Slack message, respond with a JSON object containing exactly these three
     console.log(`backend result: ${JSON.stringify(backendResult)}`);
   }
 
+  if (backendResult.id) {
+    const frontendUrl = env.FRONTEND_URL ?? "https://ohack.dev";
+    const blogUrl = `${frontendUrl}/blog/${backendResult.id}`;
+    await sayInThread(
+      client,
+      inputs.channelId,
+      translationTargetThreadTs ?? inputs.messageTs,
+      `Read the full article: ${blogUrl}`,
+    );
+  }
+
   return { outputs: { ts: result.ts } };
 });
 
 // ---------------------------
 // Internal functions
 // ---------------------------
+
+function generateSlug(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
+}
 
 function isAlreadyPosted(
   // deno-lint-ignore no-explicit-any
