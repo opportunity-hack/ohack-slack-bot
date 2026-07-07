@@ -38,6 +38,33 @@ Set the following environment variables for local development
 
 ---
 
+## repo-tpm: Daily GitHub Digest
+
+The `repo-tpm/` module posts a daily GitHub status digest to each active team's Slack channel.
+
+### Additional Slack app scopes required
+
+Add these scopes to the bot token in api.slack.com/apps → OAuth & Permissions:
+- `channels:read` — list channels to resolve channel names
+- `channels:join` — join team channels before posting
+- `channels:history` — read prior bot messages for reaction tracking
+- `reactions:read` — read ✋/✅/👀 reactions on nudge lines
+- `reactions:write` — add 🎉 reaction to parent when wins exist
+
+### New environment variables
+
+Set via `fly secrets set` for production:
+- `EVENT_ID` — hackathon event ID (default: `summer-2026`)
+- `GITHUB_TOKEN` — read-only classic PAT with `public_repo` scope (optional but avoids rate limits)
+- `DIGEST_CRON` — cron schedule in UTC (default: `0 16 * * *` = 9 AM Arizona)
+- `DIGEST_DRY_RUN=1` — print Block Kit JSON to stdout instead of posting (use to verify before first live run)
+
+### New Slack slash command
+
+Register `/repo-status` in the Slack app manifest (same setup as `/praise`). It runs the digest on demand from any team channel.
+
+---
+
 ## Questions and Concerns
 
 If any issues arise when setting up the development version of the Praise Bot, join the Opportunity Hack Slack workspace to post a message in the #slack-bot-dev channel or send a direct message to *Andrew Nguyen* or *Greg Vannoni* for assistance.

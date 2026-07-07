@@ -3,6 +3,10 @@ const { savePraiseFunction } = require('./functions/save_praise.js');
 const { App, LogLevel } = require('@slack/bolt');
 const praiseFormView = require('./praise_form.json');
 const { config } = require('dotenv');
+const cron = require('node-cron');
+const { runDigest, runDigestForChannel } = require('./repo-tpm/digest');
+const { runMentorRollup } = require('./repo-tpm/mentor_rollup');
+const digestConfig = require('./repo-tpm/config');
 
 config();
 
@@ -173,12 +177,57 @@ app.view('praise_form', async ({ ack, body, view, client, logger}) => {
   }
 });
 
+app.command('/repo-status', async ({ ack, body, client }) => {
+  await ack();
+  const channelId = body.channel_id;
+  try {
+    const found = await runDigestForChannel(client, channelId);
+    if (!found) {
+      await client.chat.postEphemeral({
+        channel: channelId,
+        user: body.user_id,
+        text: 'No active hackathon team found for this channel. `/repo-status` only works in a team\'s own channel.',
+      });
+    }
+  } catch (err) {
+    console.error('[repo-tpm] /repo-status error:', err.message);
+    await client.chat.postEphemeral({
+      channel: channelId,
+      user: body.user_id,
+      text: `Something went wrong running the digest: ${err.message}`,
+    });
+  }
+});
+
 /** Start the Bolt App */
 (async () => {
   try {
     // Start the app
     await app.start();
     console.log('⚡️ Bolt app is running!');
+
+    // Daily GitHub digest cron
+    cron.schedule(digestConfig.digestCron, async () => {
+      console.log('[repo-tpm] Running daily digest...');
+      try {
+        const hackathon = await require('./repo-tpm/ohack_api').getHackathon().catch(() => null);
+        await runDigest(app.client, { hackathonEndDate: hackathon?.end_date });
+      } catch (err) {
+        console.error('[repo-tpm] Digest error:', err.message);
+      }
+    });
+    console.log(`[repo-tpm] Digest scheduled: ${digestConfig.digestCron}`);
+
+    // Weekly mentor rollup (Mondays)
+    cron.schedule(digestConfig.mentorCron, async () => {
+      console.log('[repo-tpm] Running weekly mentor rollup...');
+      try {
+        await runMentorRollup(app.client);
+      } catch (err) {
+        console.error('[repo-tpm] Mentor rollup error:', err.message);
+      }
+    });
+    console.log(`[repo-tpm] Mentor rollup scheduled: ${digestConfig.mentorCron}`);
 
     // Handle graceful shutdown
     const shutdown = async () => {
