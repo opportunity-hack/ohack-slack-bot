@@ -21,7 +21,28 @@ const NUDGE_VARIANTS = {
     'Over a week stalled. Time to decide: merge, split, or close.',
     'Needs a decision: finish, split, or close? 7+ days without updates.',
   ],
+  // Portfolio copy must not contain a literal #<digit> — reactions.js maps
+  // thread lines to PRs by extracting #N.
+  portfolioMergedBlank: [
+    'This is merged — it\'s portfolio material now! Backfill 2–3 sentences (what/why/how) so recruiters browsing your GitHub see the story.',
+    'Shipped! 🎉 A short description turns a merged PR into a portfolio piece — recruiters really do read these.',
+    'Nice merge. Add a quick what/why/how to the description and this becomes something you can link in interviews.',
+  ],
+  portfolioOpenBlank: [
+    'A 2–3 sentence description (what/why/how) helps reviewers today — and becomes portfolio material once it merges.',
+    'Give this PR a short story: what it does, why, how you tested it. It speeds up review and shines on your profile.',
+    'Add a description — this is open source, so future recruiters can read this PR. Show your thinking!',
+  ],
+  portfolioNoRef: [
+    'Tip: add `Closes` + the issue number to the description — it auto-closes on merge and shows you work end-to-end.',
+    'If this maps to an issue, linking it with `Fixes` + the number ties the work together nicely.',
+    'Linking the issue makes the PR self-documenting — a small pro habit recruiters notice.',
+  ],
 };
+
+const THIN_BODY_MAX_CHARS = 40;
+const SUBSTANTIAL_BODY_MIN_CHARS = 140;
+const PORTFOLIO_MERGED_LOOKBACK_DAYS = 3;
 
 function variant(key, dayOfYear, itemIndex) {
   const pool = NUDGE_VARIANTS[key];
@@ -44,6 +65,62 @@ function stalledPR(pr, now) {
 
 function wins(mergedPRs, closedIssues) {
   return { mergedPRs, closedIssues };
+}
+
+// What's left of a PR body once template boilerplate (HTML comments,
+// untouched "## Heading" skeleton lines) is removed.
+function normalizeBody(body) {
+  return (body || '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/^#{1,6}\s+.*$/gm, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function hasIssueRef(title, body) {
+  return /#\d+/.test(`${title || ''} ${body || ''}`);
+}
+
+function isBotAuthor(user) {
+  return user?.type === 'Bot' || /\[bot\]$/i.test(user?.login || '');
+}
+
+function isBlankOrThin(body) {
+  return normalizeBody(body).length < THIN_BODY_MAX_CHARS;
+}
+
+function isSubstantial(body) {
+  return normalizeBody(body).length >= SUBSTANTIAL_BODY_MIN_CHARS;
+}
+
+// PR-description coaching for junior devs: their open-source PRs are
+// portfolio material for recruiters, so a blank body is a missed opportunity.
+// Priority order (one nudge max per PR): mergedBlank → openBlank → openNoRef.
+function portfolioNudges(allPullRequests, now, dayOfYear) {
+  const mergedCutoff = now - PORTFOLIO_MERGED_LOOKBACK_DAYS * 24 * 60 * 60 * 1000;
+  const mergedBlank = [];
+  const openBlank = [];
+  const openNoRef = [];
+
+  for (const pr of allPullRequests || []) {
+    if (isBotAuthor(pr.user)) continue;
+    const item = {
+      number: pr.number,
+      title: pr.title,
+      url: pr.html_url,
+      author: pr.user?.login || 'unknown',
+    };
+    if (pr.merged_at && new Date(pr.merged_at).getTime() >= mergedCutoff && isBlankOrThin(pr.body)) {
+      mergedBlank.push({ ...item, reason: 'mergedBlank' });
+    } else if (pr.state === 'open' && !pr.draft) {
+      if (isBlankOrThin(pr.body)) openBlank.push({ ...item, reason: 'openBlank' });
+      else if (!hasIssueRef(pr.title, pr.body)) openNoRef.push({ ...item, reason: 'openNoRef' });
+    }
+  }
+
+  const keyFor = { mergedBlank: 'portfolioMergedBlank', openBlank: 'portfolioOpenBlank', openNoRef: 'portfolioNoRef' };
+  return [...mergedBlank, ...openBlank, ...openNoRef]
+    .map((p, i) => ({ ...p, nudge: variant(keyFor[p.reason], dayOfYear, i) }));
 }
 
 function touched(recentAll) {
@@ -96,6 +173,7 @@ function classifyRepoData(repoData, now, dayOfYear) {
       url: pr.html_url,
       author: pr.user?.login || 'unknown',
       mergedAt: pr.merged_at,
+      greatWriteup: isSubstantial(pr.body),
     }));
 
   const closedIssues = recentAll
@@ -108,7 +186,17 @@ function classifyRepoData(repoData, now, dayOfYear) {
 
   const touchedItems = touched(recentAll);
 
-  return { unownedIssues, stalledPRs, mergedPRs, closedIssues, touchedItems };
+  return {
+    unownedIssues,
+    stalledPRs,
+    mergedPRs,
+    closedIssues,
+    touchedItems,
+    portfolioNudges: portfolioNudges(allPullRequests, now, dayOfYear),
+  };
 }
 
-module.exports = { unowned, stalledPR, wins, touched, classifyRepoData, variant };
+module.exports = {
+  unowned, stalledPR, wins, touched, classifyRepoData, variant,
+  normalizeBody, hasIssueRef, isBotAuthor, isBlankOrThin, isSubstantial, portfolioNudges,
+};

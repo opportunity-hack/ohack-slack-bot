@@ -22,7 +22,8 @@ function parseRepoUrl(link) {
 async function getRepoData(owner, repo, windowHours = 25) {
   const since = new Date(Date.now() - windowHours * 60 * 60 * 1000).toISOString();
 
-  const [allItems, recentItems, allPRs] = await Promise.all([
+  const [meta, allItems, recentItems, allPRs] = await Promise.all([
+    ghFetch(`https://api.github.com/repos/${owner}/${repo}`),
     ghFetch(`https://api.github.com/repos/${owner}/${repo}/issues?state=open&per_page=100`),
     ghFetch(`https://api.github.com/repos/${owner}/${repo}/issues?state=all&since=${since}&per_page=100`),
     ghFetch(`https://api.github.com/repos/${owner}/${repo}/pulls?state=all&sort=updated&direction=desc&per_page=50`),
@@ -35,7 +36,8 @@ async function getRepoData(owner, repo, windowHours = 25) {
   const recentAll = recentItems || [];
   const allPullRequests = allPRs || [];
 
-  return { owner, repo, openIssues, openPRs, recentAll, allPullRequests, since };
+  // pushed_at covers direct commits — teams often push to main without PRs/issues.
+  return { owner, repo, openIssues, openPRs, recentAll, allPullRequests, since, pushedAt: meta?.pushed_at || null };
 }
 
 module.exports = { parseRepoUrl, getRepoData };

@@ -3,10 +3,10 @@ const { savePraiseFunction } = require('./functions/save_praise.js');
 const { App, LogLevel } = require('@slack/bolt');
 const praiseFormView = require('./praise_form.json');
 const { config } = require('dotenv');
-const cron = require('node-cron');
-const { runDigest, runDigestForChannel } = require('./repo-tpm/digest');
-const { runMentorRollup } = require('./repo-tpm/mentor_rollup');
-const digestConfig = require('./repo-tpm/config');
+const { runDigestForChannel } = require('./repo-tpm/digest');
+const { startScheduler } = require('./scheduler');
+const { getEffectiveConfig } = require('./remote_config');
+const { registerCommunityHandlers } = require('./community');
 
 config();
 
@@ -181,12 +181,12 @@ app.command('/repo-status', async ({ ack, body, client }) => {
   await ack();
   const channelId = body.channel_id;
   try {
-    const found = await runDigestForChannel(client, channelId);
+    const found = await runDigestForChannel(client, channelId, getEffectiveConfig());
     if (!found) {
       await client.chat.postEphemeral({
         channel: channelId,
         user: body.user_id,
-        text: 'No active hackathon team found for this channel. `/repo-status` only works in a team\'s own channel.',
+        text: 'No GitHub digest is configured for this channel. `/repo-status` only works in a channel watched by a digest config (see /admin/praise-bot on ohack.dev).',
       });
     }
   } catch (err) {
@@ -199,6 +199,10 @@ app.command('/repo-status', async ({ ack, body, client }) => {
   }
 });
 
+// Community engagement: #introductions matchmaker (threaded welcome +
+// "you should meet" suggestions). Enabled/disabled from /admin/praise-bot.
+registerCommunityHandlers(app);
+
 /** Start the Bolt App */
 (async () => {
   try {
@@ -206,28 +210,11 @@ app.command('/repo-status', async ({ ack, body, client }) => {
     await app.start();
     console.log('⚡️ Bolt app is running!');
 
-    // Daily GitHub digest cron
-    cron.schedule(digestConfig.digestCron, async () => {
-      console.log('[repo-tpm] Running daily digest...');
-      try {
-        const hackathon = await require('./repo-tpm/ohack_api').getHackathon().catch(() => null);
-        await runDigest(app.client, { hackathonEndDate: hackathon?.end_date });
-      } catch (err) {
-        console.error('[repo-tpm] Digest error:', err.message);
-      }
-    });
-    console.log(`[repo-tpm] Digest scheduled: ${digestConfig.digestCron}`);
-
-    // Weekly mentor rollup (Mondays)
-    cron.schedule(digestConfig.mentorCron, async () => {
-      console.log('[repo-tpm] Running weekly mentor rollup...');
-      try {
-        await runMentorRollup(app.client);
-      } catch (err) {
-        console.error('[repo-tpm] Mentor rollup error:', err.message);
-      }
-    });
-    console.log(`[repo-tpm] Mentor rollup scheduled: ${digestConfig.mentorCron}`);
+    // All cron jobs (GitHub digests, mentor rollups, calendar reminders,
+    // community digest) come from remote config managed at /admin/praise-bot
+    // on ohack.dev, with env vars as the fallback. The scheduler polls for
+    // changes and re-registers jobs without a restart.
+    await startScheduler(app);
 
     // Handle graceful shutdown
     const shutdown = async () => {

@@ -37,13 +37,13 @@ function mention(login, slackIdMap) {
 }
 
 function buildThreadReplies(repo, classified, slackIdMap, { claimed = {}, suppressed = new Set() } = {}) {
-  const { unownedIssues, stalledPRs, mergedPRs, closedIssues, touchedItems } = classified;
+  const { unownedIssues, stalledPRs, mergedPRs, closedIssues, touchedItems, portfolioNudges = [] } = classified;
   const replies = [];
 
   // Wins
   if (mergedPRs.length > 0 || closedIssues.length > 0) {
     const lines = ['🎉 *Wins since yesterday*'];
-    mergedPRs.forEach(pr => lines.push(`• <${pr.url}|#${pr.number} ${pr.title}> merged by ${mention(pr.author, slackIdMap)}`));
+    mergedPRs.forEach(pr => lines.push(`• <${pr.url}|#${pr.number} ${pr.title}> merged by ${mention(pr.author, slackIdMap)}${pr.greatWriteup ? ' — 📝 great write-up!' : ''}`));
     closedIssues.forEach(i => lines.push(`• <${i.url}|#${i.number} ${i.title}> closed`));
     replies.push(lines.join('\n'));
   }
@@ -69,6 +69,19 @@ function buildThreadReplies(repo, classified, slackIdMap, { claimed = {}, suppre
         ? pr.assignees.map(a => mention(a, slackIdMap)).join(', ')
         : mention(pr.author, slackIdMap);
       lines.push(`• <${pr.url}|#${pr.number} ${pr.title}> (${pointPerson}) — ${pr.nudge}`);
+    });
+    replies.push(lines.join('\n'));
+  }
+
+  // Portfolio coaching — a ✅ on any line for the same PR number (e.g. its
+  // stalled-PR line) also suppresses these; that cross-section sharing is intended.
+  const portfolioToShow = portfolioNudges
+    .filter(p => !suppressed.has(String(p.number)))
+    .slice(0, 4);
+  if (portfolioToShow.length > 0) {
+    const lines = ['💼 *Portfolio corner* — these PRs are public proof of your work'];
+    portfolioToShow.forEach(p => {
+      lines.push(`• <${p.url}|#${p.number} ${p.title}> (${mention(p.author, slackIdMap)}) — ${p.nudge}`);
     });
     replies.push(lines.join('\n'));
   }

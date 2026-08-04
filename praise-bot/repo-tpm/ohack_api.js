@@ -7,11 +7,11 @@ async function fetchJson(url) {
   return res.json();
 }
 
-async function getHackathon() {
+async function getHackathon(eventId = config.eventId) {
   const data = await fetchJson(`${config.ohackApiBase}/api/messages/hackathons`);
   const hackathons = Array.isArray(data) ? data : data.hackathons || [];
-  const h = hackathons.find(h => h.event_id === config.eventId);
-  if (!h) throw new Error(`Hackathon ${config.eventId} not found`);
+  const h = hackathons.find(h => h.event_id === eventId);
+  if (!h) throw new Error(`Hackathon ${eventId} not found`);
   return h;
 }
 
@@ -20,8 +20,8 @@ async function getTeam(teamId) {
   return data.team || data;
 }
 
-async function getActiveTeams() {
-  const hackathon = await getHackathon();
+async function getActiveTeams(eventId = config.eventId) {
+  const hackathon = await getHackathon(eventId);
   const teamIds = hackathon.teams || [];
   const teams = await Promise.all(teamIds.map(id => getTeam(id).catch(() => null)));
   return teams.filter(t =>

@@ -3,7 +3,7 @@ const config = {
   eventId: process.env.EVENT_ID || 'summer-2026',
   githubToken: process.env.GITHUB_TOKEN || '',
   digestCron: process.env.DIGEST_CRON || '0 16 * * *',
-  mentorCron: process.env.MENTOR_CRON || '0 14 * * 1', // Mondays 7 AM Arizona
+  mentorCron: process.env.MENTOR_CRON || '30 17 * * *', // Daily 17:30 UTC (10:30 AM Arizona)
   mentorChannel: process.env.MENTOR_CHANNEL || '',
   dryRun: process.env.DIGEST_DRY_RUN === '1',
   ohackApiBase: 'https://api.ohack.dev',

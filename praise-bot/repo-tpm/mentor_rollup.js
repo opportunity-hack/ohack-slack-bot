@@ -1,17 +1,20 @@
 'use strict';
 const config = require('./config');
-const { getActiveTeams } = require('./ohack_api');
-const { parseRepoUrl, getRepoData } = require('./github');
+const { getTargets } = require('./targets');
+const { getRepoData } = require('./github');
 const { classifyRepoData } = require('./rules');
+const { resolveChannelId } = require('../slack_channels');
 
 const WINDOW_HOURS = 7 * 24; // 7-day lookback for weekly rollup
 const ZERO_ACTIVITY_THRESHOLD_H = 72;
 
 function ageHours(repoData, now) {
   const allItems = [...(repoData.openIssues || []), ...(repoData.openPRs || []), ...(repoData.recentAll || [])];
-  if (allItems.length === 0) return Infinity;
-  const latest = Math.max(...allItems.map(i => new Date(i.updated_at).getTime()));
-  return (now - latest) / (1000 * 60 * 60);
+  const timestamps = allItems.map(i => new Date(i.updated_at).getTime());
+  // pushed_at catches teams that commit directly without touching issues/PRs.
+  if (repoData.pushedAt) timestamps.push(new Date(repoData.pushedAt).getTime());
+  if (timestamps.length === 0) return Infinity;
+  return (now - Math.max(...timestamps)) / (1000 * 60 * 60);
 }
 
 function formatAge(hours) {
@@ -20,19 +23,22 @@ function formatAge(hours) {
   return `${Math.round(hours / 24)}d ago`;
 }
 
-async function buildTeamRow(team, now, dayOfYear) {
-  const repos = (team.github_links || [])
-    .map(l => parseRepoUrl(typeof l === 'string' ? l : l.link))
-    .filter(Boolean);
+async function buildTargetRow(target, now, dayOfYear) {
+  const repos = target.repos || [];
 
   let mergedPRs7d = 0, openIssues = 0, unownedIssues = 0, openPRs = 0, stalledPRs = 0;
   let minAgeH = Infinity;
+  let okRepos = 0;
   const since7d = new Date(now - WINDOW_HOURS * 60 * 60 * 1000);
 
   for (const { owner, repo } of repos) {
     try {
       const data = await getRepoData(owner, repo, WINDOW_HOURS);
-      if (!data) continue;
+      if (!data) {
+        console.warn(`[repo-tpm] Mentor rollup: repo not found (404): ${owner}/${repo}`);
+        continue;
+      }
+      okRepos++;
       const classified = classifyRepoData(data, now, dayOfYear);
 
       mergedPRs7d += (data.allPullRequests || []).filter(pr => pr.merged_at && new Date(pr.merged_at) >= since7d).length;
@@ -48,44 +54,62 @@ async function buildTeamRow(team, now, dayOfYear) {
     }
   }
 
+  // If every repo fetch failed (rate limit, bad token, 404), we know nothing —
+  // don't report the team as inactive, that's a data problem, not a team problem.
+  const noData = okRepos === 0;
+
   return {
-    teamName: team.name,
+    teamName: target.name,
+    slackChannel: (target.channels || [])[0] || '',
     mergedPRs7d,
     openIssues,
     unownedIssues,
     openPRs,
     stalledPRs,
-    lastActivityLabel: formatAge(minAgeH),
-    zeroActivity72h: minAgeH > ZERO_ACTIVITY_THRESHOLD_H,
+    minAgeH,
+    noData,
+    lastActivityLabel: noData ? 'no data' : formatAge(minAgeH),
+    zeroActivity72h: !noData && minAgeH > ZERO_ACTIVITY_THRESHOLD_H,
     repos: repos.length,
   };
 }
 
-async function resolveChannelId(client, nameOrId) {
-  // If it looks like an ID already (starts with C/G), use it directly
-  if (/^[CG][A-Z0-9]+$/.test(nameOrId)) return nameOrId;
-  let cursor;
-  for (let page = 0; page < 5; page++) {
-    const res = await client.conversations.list({ limit: 200, cursor, types: 'public_channel' });
-    const found = (res.channels || []).find(c => c.name === nameOrId);
-    if (found) return found.id;
-    cursor = res.response_metadata?.next_cursor;
-    if (!cursor) break;
+// Build a Slack label for a team. Slack mrkdwn does NOT support a custom label
+// on channel mentions (`<#ID|label>` renders literally), so we show the friendly
+// team name in bold plus a bare `<#ID>` mention, which Slack linkifies to the
+// live channel name and makes tappable.
+async function teamLabel(client, row) {
+  if (row.slackChannel) {
+    const id = await resolveChannelId(client, row.slackChannel).catch(() => null);
+    if (id) return `*${row.teamName}* (<#${id}>)`;
   }
-  return null;
+  return `*${row.teamName}*`;
 }
 
-async function runMentorRollup(client) {
-  if (!config.mentorChannel) {
-    console.warn('[repo-tpm] MENTOR_CHANNEL not set, skipping weekly rollup.');
+// One-line reason a team is flagged, so mentors know where to jump in.
+function concernLine(r) {
+  if (r.noData) return '↳ ⚠️ Couldn\'t read GitHub data (rate limit, token, or repo link?) — not necessarily inactive';
+  if (r.zeroActivity72h) return `↳ ⛔ No activity in 3+ days (last: ${r.lastActivityLabel}) — check in with the team`;
+  const parts = [];
+  if (r.unownedIssues > 0) parts.push(`${r.unownedIssues} unowned issue${r.unownedIssues !== 1 ? 's' : ''} need an owner`);
+  if (r.stalledPRs > 0) parts.push(`${r.stalledPRs} stalled PR${r.stalledPRs !== 1 ? 's' : ''} need review`);
+  if (r.mergedPRs7d === 0) parts.push('nothing merged this week');
+  return parts.length ? `↳ ${parts.join(' · ')}` : null;
+}
+
+async function runMentorRollup(client, watcher, globalCfg) {
+  const rollupChannel = watcher?.rollup?.channel;
+  if (!rollupChannel) {
+    console.warn('[repo-tpm] No rollup channel configured, skipping rollup.');
     return;
   }
+  const dryRun = watcher?.dry_run ?? globalCfg?.dry_run ?? config.dryRun;
 
-  let teams;
+  let targets;
   try {
-    teams = await getActiveTeams();
+    targets = await getTargets(watcher);
   } catch (err) {
-    console.error('[repo-tpm] Mentor rollup: failed to fetch teams:', err.message);
+    console.error('[repo-tpm] Mentor rollup: failed to resolve targets:', err.message);
     return;
   }
 
@@ -93,34 +117,49 @@ async function runMentorRollup(client) {
   const dayOfYear = Math.floor((now - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
   const rows = [];
 
-  for (const team of teams) {
+  for (const target of targets) {
     try {
-      rows.push(await buildTeamRow(team, now, dayOfYear));
+      rows.push(await buildTargetRow(target, now, dayOfYear));
     } catch (err) {
-      console.error(`[repo-tpm] Mentor rollup: error for team ${team.name}:`, err.message);
+      console.error(`[repo-tpm] Mentor rollup: error for target ${target.name}:`, err.message);
     }
   }
 
   if (rows.length === 0) return;
 
+  // Surface teams that need a mentor's attention first: inactive teams, then
+  // stalest activity, so the top of the message is the priority list.
+  rows.sort((a, b) => {
+    if (a.zeroActivity72h !== b.zeroActivity72h) return a.zeroActivity72h ? -1 : 1;
+    return b.minAgeH - a.minAgeH;
+  });
+
   const flagged = rows.filter(r => r.zeroActivity72h).length;
   const header = `*Weekly Repo Health — all active teams* (${rows.length} teams${flagged > 0 ? `, ${flagged} 🚩 inactive 72h+` : ''})`;
 
-  const tableLines = rows.map(r => {
-    const flag = r.zeroActivity72h ? '🚩 ' : '';
-    return `${flag}*${r.teamName}* · ${r.mergedPRs7d} merged (7d) · ${r.openIssues} issues (${r.unownedIssues} unowned) · ${r.openPRs} PRs (${r.stalledPRs} stalled) · last activity: ${r.lastActivityLabel}`;
-  });
+  const tableLines = [];
+  for (const r of rows) {
+    const flag = r.noData ? '⚠️ ' : r.zeroActivity72h ? '🚩 ' : '';
+    const label = await teamLabel(client, r);
+    const stats = r.noData
+      ? 'GitHub data unavailable'
+      : `${r.mergedPRs7d} merged (7d) · ${r.openIssues} issues (${r.unownedIssues} unowned) · ${r.openPRs} PRs (${r.stalledPRs} stalled) · last activity: ${r.lastActivityLabel}`;
+    tableLines.push(`${flag}${label} · ${stats}`);
+    const concern = concernLine(r);
+    if (concern) tableLines.push(`    ${concern}`);
+  }
 
-  const text = `${header}\n\n${tableLines.join('\n')}`;
+  const footer = '\n_Tap a channel link to jump into a team._';
+  const text = `${header}\n\n${tableLines.join('\n')}${footer}`;
 
-  if (config.dryRun) {
+  if (dryRun) {
     console.log('[repo-tpm DRY RUN] Mentor rollup:\n', text);
     return;
   }
 
-  const channelId = await resolveChannelId(client, config.mentorChannel);
+  const channelId = await resolveChannelId(client, rollupChannel);
   if (!channelId) {
-    console.error(`[repo-tpm] Mentor rollup: channel not found: ${config.mentorChannel}`);
+    console.error(`[repo-tpm] Mentor rollup: channel not found: ${rollupChannel}`);
     return;
   }
 

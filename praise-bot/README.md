@@ -42,6 +42,8 @@ Set the following environment variables for local development
 
 The `repo-tpm/` module posts a daily GitHub status digest to each active team's Slack channel.
 
+The digest thread includes a **💼 Portfolio corner** that coaches junior devs on PR descriptions (blank/thin bodies on open or recently merged PRs, missing issue links — their open-source PRs are portfolio material for recruiters), and tags well-documented merged PRs with "📝 great write-up!" in Wins. Rule-based (no LLM); disable via `global.portfolio_coaching: false` in remote config.
+
 ### Additional Slack app scopes required
 
 Add these scopes to the bot token in api.slack.com/apps → OAuth & Permissions:
@@ -62,6 +64,77 @@ Set via `fly secrets set` for production:
 ### New Slack slash command
 
 Register `/repo-status` in the Slack app manifest (same setup as `/praise`). It runs the digest on demand from any team channel.
+
+---
+
+## calendar-reminders: Google Calendar → Slack event reminders
+
+The `calendar-reminders/` module polls a **public** Google Calendar (via its ICS feed — no Google API key needed) and posts a reminder to one or more Slack channels shortly before each event starts. Default: the [OHack public calendar](https://www.ohack.dev/office-hours), 15 minutes before, into `#general`.
+
+Recurring events (weekly office hours etc.) are expanded correctly, including cancelled/rescheduled occurrences; all-day events are skipped. Each occurrence is announced once (in-memory dedupe — a bot restart inside the lead window may rarely repeat one reminder).
+
+Each reminder includes an *Add to your calendar* link (pre-filled Google Calendar event) and a *Subscribe to all events* link (adds the whole public calendar to the reader's Google Calendar).
+
+### Environment variables (all optional)
+
+- `CALENDAR_ID` — public Google Calendar ID (default: OHack public calendar)
+- `CALENDAR_CHANNELS` — comma-separated channel names or IDs (default: `general`)
+- `CALENDAR_LEAD_MINUTES` — minutes before event start to post (default: `15`)
+- `CALENDAR_POLL_CRON` — poll schedule (default: `*/5 * * * *`; keep the interval well under the lead time)
+- `CALENDAR_EVENTS_URL` — "full schedule" link in the message (default: `https://www.ohack.dev/office-hours`)
+- `CALENDAR_DRY_RUN=1` — print reminders to stdout instead of posting
+
+Uses the same `channels:read` scope as repo-tpm to resolve channel names; the bot must be a member of the target channels (or have `chat:write.public`).
+
+---
+
+## Remote config: manage everything from ohack.dev/admin/praise-bot
+
+All bot *behavior* (which GitHub repos/hackathons to watch, which Slack channels
+to post to, cron schedules, feature toggles) is managed from the
+**Praise Bot** tab at [ohack.dev/admin](https://ohack.dev/admin/praise-bot) —
+no Fly.io env-var changes or redeploys needed. Only *secrets* stay in env vars.
+
+How it works:
+- Config lives in the `praise_bot_config` Firestore collection on the backend.
+- The bot polls `GET /api/praise-bot/config` (authed by `X-Api-Key`) every
+  `CONFIG_POLL_SECONDS` (default 60s) and re-registers its cron jobs when
+  anything changed (`scheduler.js` + `remote_config.js`).
+- If the backend is unreachable or has no config docs yet, the bot falls back
+  to its last-good config, then to the env vars documented above — a fresh
+  deploy with no admin config behaves exactly like the old bot.
+
+Config-related env vars:
+- `BACKEND_CONFIG_TOKEN` — API key for the config endpoint (falls back to
+  `BACKEND_PRAISE_TOKEN` if unset)
+- `BACKEND_CONFIG_URL` — override the endpoint (default:
+  `https://api.ohack.dev/api/praise-bot/config`; useful for local backend testing)
+- `CONFIG_POLL_SECONDS` — poll interval (default `60`)
+
+The admin UI supports multiple **GitHub watchers** (each with its own repos or
+hackathon event, channels, digest cron, and optional mentor rollup), multiple
+**calendar reminders**, the **community** features below, and global
+dry-run/LLM/timezone settings.
+
+---
+
+## community: #introductions matchmaker + weekly digest
+
+The `community/` module drives Slack engagement (enable in
+/admin/praise-bot → Community; keep **dry run** on for the first week and
+watch `fly logs`):
+
+- **Intro matchmaker** — when someone posts a real introduction in the intro
+  channel, the bot replies *in-thread* with a warm welcome and up to
+  `max_matches` "you might want to meet" suggestions, matched against earlier
+  intros (keyword prefilter + LLM ranking; fails open to a plain welcome).
+- **Weekly community digest** — posts "new faces this week" with @mentions and
+  common themes to a configured channel on its own cron.
+
+Only public messages from the intro channel are used. Requires the
+`message.channels` event subscription (already in `manifest.json`). Note: on
+Slack's free plan the API only returns ~90 days of history, so matches come
+from recent intros.
 
 ---
 
