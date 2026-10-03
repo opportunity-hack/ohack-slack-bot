@@ -38,6 +38,10 @@ Set the following environment variables for local development
 
 ---
 
+## Deploying
+
+The bot runs on Fly.io as `praise-bolt-app` (`fly.toml`, `Dockerfile`). Deploys are automatic: `.github/workflows/praise-bot.yml` runs `npm test` on every PR and push touching `praise-bot/`, and on `main` it runs `flyctl deploy --remote-only`. It needs a `FLY_API_TOKEN` repo secret (app-scoped: `fly tokens create deploy -a praise-bolt-app`); without it the deploy step logs a warning and skips. Manual deploy: `cd praise-bot && fly deploy --remote-only`.
+
 ## repo-tpm: Daily GitHub Digest
 
 The `repo-tpm/` module posts a GitHub status digest to each active team's Slack channel.

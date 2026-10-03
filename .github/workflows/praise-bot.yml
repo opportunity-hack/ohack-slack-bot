@@ -1,0 +1,50 @@
+# praise-bot CI/CD: run the test suite on every PR and push that touches
+# praise-bot/, and deploy praise-bolt-app to Fly.io when main changes.
+# Requires the FLY_API_TOKEN repo secret (app-scoped deploy token:
+#   fly tokens create deploy -a praise-bolt-app). Without it the deploy job
+# logs a warning and skips, so the workflow stays green.
+name: praise-bot
+
+on:
+  push:
+    branches: [main]
+    paths: ['praise-bot/**', '.github/workflows/praise-bot.yml']
+  pull_request:
+    paths: ['praise-bot/**', '.github/workflows/praise-bot.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: praise-bot-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: praise-bot
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '23.9.0' # keep in sync with NODE_VERSION in praise-bot/Dockerfile
+          cache: npm
+          cache-dependency-path: praise-bot/package-lock.json
+      - run: npm ci
+      - run: npm test
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: test
+    runs-on: ubuntu-latest
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - if: env.FLY_API_TOKEN == ''
+        run: echo "::warning::FLY_API_TOKEN secret is not set; skipping deploy. Create one with 'fly tokens create deploy -a praise-bolt-app' and add it under Settings > Secrets and variables > Actions."
+      - if: env.FLY_API_TOKEN != ''
+        uses: superfly/flyctl-actions/setup-flyctl@master
+      - if: env.FLY_API_TOKEN != ''
+        run: flyctl deploy --remote-only
