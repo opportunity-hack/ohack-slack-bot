@@ -3,7 +3,7 @@ const config = require('./config');
 const { getTargets } = require('./targets');
 const { getRepoData } = require('./github');
 const { classifyRepoData } = require('./rules');
-const { repoScoreboardText, buildParentBlocks, buildLLMBlock, buildThreadReplies } = require('./render');
+const { repoScoreboardText, buildParentBlocks, buildThreadBlocks, isQuiet } = require('./render');
 const { getBotUserId, getClaimedAndAcked } = require('./reactions');
 const { getLLMInsights } = require('./llm');
 const { resolveChannelId } = require('../slack_channels');
@@ -29,6 +29,11 @@ function digestOptions(watcher, globalCfg) {
     dryRun: watcher?.dry_run ?? globalCfg?.dry_run ?? config.dryRun,
     llmEnabled: (globalCfg?.llm_enabled !== false) && Boolean(config.openaiApiKey),
     portfolioEnabled: globalCfg?.portfolio_coaching !== false,
+    // Lookback for merges, commits and activity. Daily digests use 25h (an
+    // hour of slack past the cron); hourly hackathon digests set window_hours: 1.
+    windowHours: Number(watcher?.digest?.window_hours) > 0
+      ? Number(watcher.digest.window_hours)
+      : config.digestWindowHours,
   };
 }
 
@@ -77,7 +82,7 @@ async function processTarget(client, target, dayOfYear, now, opts = {}) {
 
   for (const { owner, repo } of repos) {
     try {
-      const data = await getRepoData(owner, repo);
+      const data = await getRepoData(owner, repo, opts.windowHours);
       if (!data) { console.warn(`[repo-tpm] Repo not found: ${owner}/${repo}`); continue; }
       const classified = classifyRepoData(data, now.getTime(), dayOfYear);
       classified.openIssues = data.openIssues;
@@ -86,12 +91,14 @@ async function processTarget(client, target, dayOfYear, now, opts = {}) {
         classified.portfolioNudges = [];
         classified.mergedPRs.forEach(pr => { pr.greatWriteup = false; });
       }
-      const llm = opts.llmEnabled !== false
-        ? await getLLMInsights(`${owner}/${repo}`, classified, config.openaiApiKey)
+      // Nothing to narrate for a quiet repo — skip the LLM call.
+      const llm = opts.llmEnabled !== false && !isQuiet(classified)
+        ? await getLLMInsights(`${owner}/${repo}`, classified, config.openaiApiKey, { windowHours: opts.windowHours })
         : null;
       repoResults.push({ owner, repo, classified, llm });
 
       [...classified.mergedPRs.map(p => p.author),
+       ...classified.directCommits.map(c => c.author),
        ...classified.stalledPRs.flatMap(p => [p.author, ...p.assignees]),
        ...classified.portfolioNudges.map(p => p.author),
        ...classified.touchedItems.map(t => t.actor)].forEach(l => allLogins.add(l));
@@ -105,12 +112,12 @@ async function processTarget(client, target, dayOfYear, now, opts = {}) {
   const slackIdMap = await resolveSlackIds([...allLogins], config.identityApiBase);
 
   const summaries = repoResults.map(({ owner, repo, classified, llm }) => ({
-    text: repoScoreboardText(`${owner}/${repo}`, classified),
-    narrative: llm?.narrative || null,
+    text: repoScoreboardText(`${owner}/${repo}`, classified, { windowHours: opts.windowHours }),
     owner, repo, classified, llm,
   }));
 
-  const parentBlocks = buildParentBlocks(summaries);
+  const parentBlocks = buildParentBlocks(summaries, slackIdMap);
+  // Fallback text stays scoreboard-only: reactions.js finds the parent by its leading 📊.
   const parentText = summaries.map(s => s.text).join('\n');
 
   for (const channel of channels) {
@@ -127,8 +134,7 @@ async function processTarget(client, target, dayOfYear, now, opts = {}) {
     if (opts.dryRun) {
       console.log(`[repo-tpm DRY RUN] Parent blocks for #${channel}:\n`, JSON.stringify(parentBlocks, null, 2));
       repoResults.forEach(({ owner, repo, classified, llm }) => {
-        const threadBlocks = buildThreadReplies(`${owner}/${repo}`, classified, slackIdMap, { claimed, suppressed });
-        if (llm) { const b = buildLLMBlock(llm); if (b) threadBlocks.push(b); }
+        const threadBlocks = buildThreadBlocks(owner, repo, classified, slackIdMap, llm, { claimed, suppressed, windowHours: opts.windowHours });
         console.log(`[repo-tpm DRY RUN] Thread for ${owner}/${repo}:\n`, JSON.stringify(threadBlocks, null, 2));
       });
       continue;
@@ -140,18 +146,14 @@ async function processTarget(client, target, dayOfYear, now, opts = {}) {
       blocks: parentBlocks,
     });
 
-    const hasWins = repoResults.some(r => r.classified.mergedPRs.length > 0 || r.classified.closedIssues.length > 0);
+    const hasWins = repoResults.some(r =>
+      r.classified.mergedPRs.length > 0 || r.classified.closedIssues.length > 0 || r.classified.directCommits.length > 0);
     if (hasWins) {
       try { await client.reactions.add({ channel: channelId, timestamp: parentMsg.ts, name: 'tada' }); } catch (_) {}
     }
 
     for (const { owner, repo, classified, llm } of repoResults) {
-      const threadBlocks = buildThreadReplies(`${owner}/${repo}`, classified, slackIdMap, { claimed, suppressed });
-      if (llm) {
-        const llmBlock = buildLLMBlock(llm);
-        if (llmBlock) threadBlocks.push(llmBlock);
-      }
-      if (threadBlocks.length === 0) continue;
+      const threadBlocks = buildThreadBlocks(owner, repo, classified, slackIdMap, llm, { claimed, suppressed, windowHours: opts.windowHours });
       await client.chat.postMessage({
         channel: channelId,
         thread_ts: parentMsg.ts,

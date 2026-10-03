@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "app.js",
   "scripts": {
-    "test": "node --test repo-tpm/tests/rules.test.js repo-tpm/tests/render.test.js calendar-reminders/tests/calendar.test.js tests/remote_config.test.js tests/scheduler.test.js tests/targets.test.js tests/community_llm.test.js"
+    "test": "node --test repo-tpm/tests/rules.test.js repo-tpm/tests/render.test.js repo-tpm/tests/reactions.test.js repo-tpm/tests/github.test.js calendar-reminders/tests/calendar.test.js tests/remote_config.test.js tests/scheduler.test.js tests/targets.test.js tests/community_llm.test.js"
   },
   "author": "",
   "license": "ISC",

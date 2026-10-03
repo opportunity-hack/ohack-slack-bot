@@ -40,7 +40,13 @@ Set the following environment variables for local development
 
 ## repo-tpm: Daily GitHub Digest
 
-The `repo-tpm/` module posts a daily GitHub status digest to each active team's Slack channel.
+The `repo-tpm/` module posts a GitHub status digest to each active team's Slack channel.
+
+**Layout.** The channel message is the TL;DR: one block per repo with a scoreboard line and up to 5 bullets for what shipped — merged PRs and commits pushed straight to `main`/`develop`/any branch without a PR (commits on the default branch plus any branch pushed in the window; PR merges, merge commits, PR-branch work and bot commits are filtered out). Each repo then gets one thread reply, headed by the repo name, with the AI narrative, Wins (with a description excerpt), Direct pushes, Unowned issues, Stalled PRs, Portfolio corner, Activity, and AI risks/kudos. Quiet repos get a one-line reply and skip the LLM call.
+
+**Lookback window.** Defaults to 25h for the daily digest. For hourly hackathon digests set `digest.window_hours: 1` on the watcher in remote config (or `DIGEST_WINDOW_HOURS` for the env fallback) and a matching `digest.cron`; copy adapts ("since yesterday" → "in the last hour").
+
+**Reactions.** ✋ on a thread reply claims the issues listed in it; ✅/👀 mutes their nudges. Every digest posted in the last 3 days is scanned (max 30), so hourly runs keep claims.
 
 The digest thread includes a **💼 Portfolio corner** that coaches junior devs on PR descriptions (blank/thin bodies on open or recently merged PRs, missing issue links — their open-source PRs are portfolio material for recruiters), and tags well-documented merged PRs with "📝 great write-up!" in Wins. Rule-based (no LLM); disable via `global.portfolio_coaching: false` in remote config.
 
@@ -59,6 +65,7 @@ Set via `fly secrets set` for production:
 - `EVENT_ID` — hackathon event ID (default: `summer-2026`)
 - `GITHUB_TOKEN` — read-only classic PAT with `public_repo` scope (optional but avoids rate limits)
 - `DIGEST_CRON` — cron schedule in UTC (default: `0 16 * * *` = 9 AM Arizona)
+- `DIGEST_WINDOW_HOURS` — lookback for merges/commits/activity (default: `25`; use `1` with an hourly cron). Remote config `digest.window_hours` overrides it.
 - `DIGEST_DRY_RUN=1` — print Block Kit JSON to stdout instead of posting (use to verify before first live run)
 
 ### New Slack slash command

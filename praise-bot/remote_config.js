@@ -31,7 +31,7 @@ function envDefaultConfig() {
       name: `Hackathon ${tpmConfig.eventId} (env)`,
       enabled: true,
       source: { mode: 'hackathon', event_id: tpmConfig.eventId },
-      digest: { enabled: true, cron: tpmConfig.digestCron },
+      digest: { enabled: true, cron: tpmConfig.digestCron, window_hours: tpmConfig.digestWindowHours },
       rollup: {
         enabled: Boolean(tpmConfig.mentorChannel),
         cron: tpmConfig.mentorCron,

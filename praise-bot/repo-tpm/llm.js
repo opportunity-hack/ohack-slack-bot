@@ -4,18 +4,20 @@ const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 const MODEL = 'gpt-4.1-mini';
 const TIMEOUT_MS = 10_000;
 
-function buildPrompt(repoName, classified) {
+function buildPrompt(repoName, classified, windowHours) {
   const facts = {
     repo: repoName,
+    windowHours,
     openIssues: classified.openIssues?.length ?? 0,
     unownedIssues: classified.unownedIssues.length,
     openPRs: classified.openPRs?.length ?? 0,
     stalledPRs: classified.stalledPRs.map(pr => ({ title: pr.title, ageTier: pr.tier })),
-    mergedYesterday: classified.mergedPRs.map(pr => pr.title),
+    mergedInWindow: classified.mergedPRs.map(pr => pr.title),
+    directCommits: (classified.directCommits || []).slice(0, 10).map(c => c.subject),
     recentActivity: classified.touchedItems.map(i => ({ title: i.title, isPR: i.isPR })),
   };
 
-  return `You are a hackathon TPM assistant. Given this compact repo status JSON, return a JSON object with exactly these keys:
+  return `You are a hackathon TPM assistant. Given this compact repo status JSON (activity covers the last windowHours hours), return a JSON object with exactly these keys:
 - "narrative": string, 1-2 sentences summarizing team momentum (positive/constructive tone, ≤200 chars)
 - "risks": array of strings, up to 3 specific risks (e.g. two PRs touching same area, vague issue title, PR unrelated to issue). Empty array if none.
 - "kudos": array of strings, up to 2 specific callouts of good work. Empty array if none.
@@ -26,7 +28,7 @@ ${JSON.stringify(facts, null, 2)}
 Respond ONLY with valid JSON. No markdown fences, no extra fields.`;
 }
 
-async function getLLMInsights(repoName, classified, apiKey) {
+async function getLLMInsights(repoName, classified, apiKey, { windowHours = 25 } = {}) {
   if (!apiKey) return null;
 
   const controller = new AbortController();
@@ -41,7 +43,7 @@ async function getLLMInsights(repoName, classified, apiKey) {
       },
       body: JSON.stringify({
         model: MODEL,
-        messages: [{ role: 'user', content: buildPrompt(repoName, classified) }],
+        messages: [{ role: 'user', content: buildPrompt(repoName, classified, windowHours) }],
         response_format: { type: 'json_object' },
         max_tokens: 300,
         temperature: 0.3,
