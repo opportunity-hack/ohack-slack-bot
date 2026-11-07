@@ -191,7 +191,7 @@ Given a Slack message, respond with a JSON object containing exactly these four 
 - "title": A single blog article title, fewer than 10 words, no surrounding quotes or backslashes.
 - "summary": A summary of the message in four sentences or less, no surrounding quotes or backslashes.
 - "links": All URLs found in the text formatted as Slack markdown <url|name>. Use "link" as the name when none is provided only if you can't figure out a good name. Return an empty string if no URLs are found.
-- "content_markdown": A full blog article in markdown format. Use headings (##), bullet points, and bold text where appropriate. Should be at least three paragraphs and expand meaningfully on the summary.`,
+- "content_markdown": A full blog article in markdown format. Use headings (##), bullet points, and bold text where appropriate. Should be at least three paragraphs and expand meaningfully on the summary. This is published on a website, not Slack: write every link as standard markdown [text](https://url), never Slack's <url|text> format.`,
       },
       {
         role: "user",
@@ -221,9 +221,10 @@ Given a Slack message, respond with a JSON object containing exactly these four 
   }
 
   const titleResponse = parsed.title ?? "";
-  const summaryReponse = parsed.summary ?? "";
+  const summaryReponse = slackLinksToText(parsed.summary ?? "");
   const linksResponse = parsed.links ?? "";
-  const contentMarkdown = parsed.content_markdown ?? "";
+  // Safety net: the model often copies Slack's <url|text> links from the source message.
+  const contentMarkdown = slackLinksToMarkdown(parsed.content_markdown ?? "");
 
   const summarizedText =
     `Title: ${titleResponse}\nSummary: ${summaryReponse}\nLinks: ${linksResponse}`;
@@ -332,6 +333,21 @@ Given a Slack message, respond with a JSON object containing exactly these four 
 // ---------------------------
 // Internal functions
 // ---------------------------
+
+// Slack link syntax: <https://x|label> or <https://x>. Only http(s)/mailto targets,
+// so Slack mentions like <@U123> / <#C123|chan> are left alone.
+const SLACK_LINK = /<((?:https?:\/\/|mailto:)[^|>\s]+)(?:\|([^>]*))?>/g;
+
+export function slackLinksToMarkdown(text: string): string {
+  return text.replace(SLACK_LINK, (_m, url: string, label?: string) => {
+    const name = (label ?? "").trim();
+    return name ? `[${name}](${url})` : url;
+  });
+}
+
+export function slackLinksToText(text: string): string {
+  return text.replace(SLACK_LINK, (_m, url: string, label?: string) => (label ?? "").trim() || url);
+}
 
 function generateSlug(title: string): string {
   return title
