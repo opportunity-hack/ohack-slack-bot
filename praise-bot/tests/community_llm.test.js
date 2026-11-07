@@ -31,3 +31,19 @@ test('does not touch plain @names or short tokens', () => {
 test('handles non-string input', () => {
   assert.strictEqual(fixSlackMentions(null), null);
 });
+
+const { modelParams } = require('../openai_model');
+
+test('defaults to gpt-5-mini with reasoning params (no temperature/max_tokens)', () => {
+  const p = modelParams({ maxTokens: 300, temperature: 0.3 }, {});
+  assert.strictEqual(p.model, 'gpt-5-mini');
+  assert.strictEqual(p.reasoning_effort, 'low');
+  assert.ok(p.max_completion_tokens > 300);
+  assert.strictEqual(p.temperature, undefined);
+  assert.strictEqual(p.max_tokens, undefined);
+});
+
+test('OPENAI_MODEL override to a non-reasoning model uses classic params', () => {
+  const p = modelParams({ maxTokens: 300, temperature: 0.3 }, { OPENAI_MODEL: 'gpt-4.1-mini' });
+  assert.deepStrictEqual(p, { model: 'gpt-4.1-mini', max_tokens: 300, temperature: 0.3 });
+});

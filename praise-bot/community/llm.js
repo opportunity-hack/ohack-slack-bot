@@ -3,8 +3,8 @@
 // LLM helpers for community features. Same fail-open pattern as
 // repo-tpm/llm.js: no API key or any error → null, callers degrade gracefully.
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
-const MODEL = 'gpt-4.1-mini';
-const TIMEOUT_MS = 15_000;
+const { modelParams } = require('../openai_model');
+const TIMEOUT_MS = 30_000;
 
 async function chatJson(prompt, apiKey, maxTokens = 500) {
   if (!apiKey) return null;
@@ -20,11 +20,9 @@ async function chatJson(prompt, apiKey, maxTokens = 500) {
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: MODEL,
+        ...modelParams({ maxTokens, temperature: 0.5 }),
         messages: [{ role: 'user', content: prompt }],
         response_format: { type: 'json_object' },
-        max_tokens: maxTokens,
-        temperature: 0.5,
       }),
       signal: controller.signal,
     });

@@ -172,8 +172,14 @@ export default SlackFunction(def, async ({ inputs, client, env }) => {
   const targetText = translationTarget.text;
 
   // Single API call using JSON structured output — cheaper and faster than 3 separate calls
+  // Override with `slack env add OPENAI_MODEL gpt-4.1-mini` (no redeploy needed).
+  const model = env.OPENAI_MODEL || "gpt-5-mini";
+  const isReasoningModel = /^(gpt-5|o\d)/.test(model);
   const bodyForAll = JSON.stringify({
-    model: "gpt-4.1-mini",
+    model,
+    ...(isReasoningModel
+      ? { reasoning_effort: env.OPENAI_REASONING_EFFORT || "low" }
+      : {}),
     response_format: { type: "json_object" },
     messages: [
       {

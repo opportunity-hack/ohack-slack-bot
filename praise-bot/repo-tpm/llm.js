@@ -1,8 +1,8 @@
 'use strict';
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
-const MODEL = 'gpt-4.1-mini';
-const TIMEOUT_MS = 10_000;
+const { modelParams } = require('../openai_model');
+const TIMEOUT_MS = 30_000;
 
 function buildPrompt(repoName, classified, windowHours) {
   const facts = {
@@ -42,11 +42,9 @@ async function getLLMInsights(repoName, classified, apiKey, { windowHours = 25 }
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: MODEL,
+        ...modelParams({ maxTokens: 300, temperature: 0.3 }),
         messages: [{ role: 'user', content: buildPrompt(repoName, classified, windowHours) }],
         response_format: { type: 'json_object' },
-        max_tokens: 300,
-        temperature: 0.3,
       }),
       signal: controller.signal,
     });
