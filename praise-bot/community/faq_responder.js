@@ -60,13 +60,27 @@ async function isAllowedReactor(client, userId, allowedUserIds) {
 
 // The asker's text is untrusted and the reply is posted publicly, so only
 // accept output that stays inside our own links and can't mass-ping.
+// Models sometimes mangle Slack link syntax (`<url|label]`) or emit markdown
+// (`[label](url)`), which Slack shows as raw text. Normalize both to `<url|label>`.
+function fixSlackLinks(text) {
+  return text
+    .replace(/\[([^\[\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g, '<$2|$1>')
+    .replace(/<(https?:\/\/[^\s|<>\]]+)\|([^<>\]\n]+)\]/g, '<$1|$2>');
+}
+
+const WELL_FORMED_LINK = /<https?:\/\/[^\s|<>]+(\|[^<>\n]+)?>/g;
+
 function sanitizeReply(text) {
   if (typeof text !== 'string') return null;
-  const cleaned = fixSlackMentions(text)
+  const cleaned = fixSlackLinks(fixSlackMentions(text))
     .replace(/<!(channel|here|everyone)[^>]*>/gi, '')
     .replace(/@(channel|here|everyone)\b/gi, '$1')
     .trim();
   if (cleaned.length < 20 || cleaned.length > 1500) return null;
+
+  // Any link opener that still isn't a complete <url|label> would render raw.
+  const opened = (cleaned.match(/<https?:\/\//g) || []).length;
+  if (opened !== (cleaned.match(WELL_FORMED_LINK) || []).length) return null;
 
   for (const url of cleaned.match(/https?:\/\/[^\s|>)\]]+/gi) || []) {
     let host;
@@ -188,5 +202,5 @@ function registerFaqResponder(app) {
 
 module.exports = {
   registerFaqResponder, handleFaqReaction, handleFaqMention,
-  faqSettings, sanitizeReply, draftReply, allowMention, stripMentions,
+  faqSettings, sanitizeReply, fixSlackLinks, draftReply, allowMention, stripMentions,
 };
