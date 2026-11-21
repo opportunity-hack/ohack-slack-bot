@@ -24,11 +24,13 @@
     "oauth_config": {
         "scopes": {
             "bot": [
+                "app_mentions:read",
                 "channels:history",
                 "chat:write",
                 "chat:write.public",
                 "commands",
                 "groups:history",
+                "reactions:read",
                 "users.profile:read",
                 "users:read"
             ]
@@ -37,9 +39,11 @@
     "settings": {
         "event_subscriptions": {
             "bot_events": [
+                "app_mention",
                 "function_executed",
                 "message.channels",
-                "message.groups"
+                "message.groups",
+                "reaction_added"
             ]
         },
         "interactivity": {

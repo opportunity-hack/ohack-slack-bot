@@ -7,6 +7,7 @@ const { runDigestForChannel } = require('./repo-tpm/digest');
 const { startScheduler } = require('./scheduler');
 const { getEffectiveConfig } = require('./remote_config');
 const { registerCommunityHandlers } = require('./community');
+const { registerFaqResponder } = require('./community/faq_responder');
 
 config();
 
@@ -202,6 +203,7 @@ app.command('/repo-status', async ({ ack, body, client }) => {
 // Community engagement: #introductions matchmaker (threaded welcome +
 // "you should meet" suggestions). Enabled/disabled from /admin/praise-bot.
 registerCommunityHandlers(app);
+registerFaqResponder(app);
 
 /** Start the Bolt App */
 (async () => {
