@@ -142,6 +142,20 @@ watch `fly logs`):
 - **Weekly community digest** — posts "new faces this week" with @mentions and
   common themes to a configured channel on its own cron.
 
+- **FAQ responder** — when a workspace admin (or anyone in
+  `FAQ_ALLOWED_USER_IDS` / `community.faq.allowed_user_ids`) reacts with 🤖
+  `:robot_face:` (`FAQ_EMOJI`) to a "how do I get started / how can I help?"
+  message, the bot replies *in-thread* with next steps tailored to what the
+  person said. Answers come only from `community/faq_knowledge.js` (edit that
+  file to change them); replies linking anywhere else are replaced by a canned
+  fallback. One reply per message. Disable with `FAQ_RESPONDER_ENABLED=false`.
+  Anyone can also **@mention the bot** with a question (or reply to a thread
+  with just the @mention to have it answer the parent message); limited to 5
+  per user per 10 minutes, off with `FAQ_MENTIONS_ENABLED=false`.
+  Requires the `reaction_added` + `app_mention` events and the
+  `reactions:read` + `app_mentions:read` scopes, and the bot must be in the
+  channel.
+
 Only public messages from the intro channel are used. Requires the
 `message.channels` event subscription (already in `manifest.json`). Note: on
 Slack's free plan the API only returns ~90 days of history, so matches come
