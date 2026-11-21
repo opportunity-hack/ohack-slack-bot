@@ -46,6 +46,16 @@ test('sanitizeReply rejects off-site links and strips mass pings', () => {
   assert.strictEqual(sanitizeReply(goodReply), goodReply);
 });
 
+test('sanitizeReply repairs malformed links and rejects unrepairable ones', () => {
+  assert.strictEqual(
+    sanitizeReply('Browse and join one: <https://www.ohack.dev/projects|Projects]. Then say hi.'),
+    'Browse and join one: <https://www.ohack.dev/projects|Projects>. Then say hi.');
+  assert.strictEqual(
+    sanitizeReply('Drop into [Office hours](https://www.ohack.dev/office-hours) or ask in channel.'),
+    'Drop into <https://www.ohack.dev/office-hours|Office hours> or ask in channel.');
+  assert.strictEqual(sanitizeReply('Browse projects here: <https://www.ohack.dev/projects|Projects and join.'), null);
+});
+
 test('posts LLM reply in thread with dedupe metadata', async () => {
   const client = fakeClient();
   await handleFaqReaction({ event: event(), client },
